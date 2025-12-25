@@ -1,6 +1,8 @@
 // ─────────────────────────────────────────────────────────────────
-// DETECTION ENGINE
-// Re-exports from the detection module
+// DETECTION STRATEGIES EXPORTS
 // ─────────────────────────────────────────────────────────────────
 
-export * from "./detection/index";
+export { matchPatterns } from "./pattern-matcher";
+export { analyzeImports } from "./import-analyzer";
+export { scanFileExtension, isModelFile, MODEL_EXTENSIONS } from "./file-scanner";
+export { detectAnnotations } from "./annotation-detector";
