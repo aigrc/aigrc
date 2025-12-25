@@ -1,0 +1,117 @@
+{
+  "name": "aigrc-vscode",
+  "displayName": "AIGRC - AI Governance",
+  "description": "AI Governance, Risk, Compliance for VS Code - Detect and manage AI assets in your codebase",
+  "version": "0.1.0",
+  "publisher": "aigrc",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Linters",
+    "Other"
+  ],
+  "keywords": [
+    "ai",
+    "governance",
+    "compliance",
+    "risk",
+    "ml",
+    "machine learning",
+    "eu ai act"
+  ],
+  "activationEvents": [
+    "workspaceContains:**/*.py",
+    "workspaceContains:**/*.ts",
+    "workspaceContains:**/*.js",
+    "workspaceContains:.aigrc.yaml"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "aigrc.scan",
+        "title": "AIGRC: Scan Workspace for AI Assets"
+      },
+      {
+        "command": "aigrc.init",
+        "title": "AIGRC: Initialize in Workspace"
+      },
+      {
+        "command": "aigrc.showStatus",
+        "title": "AIGRC: Show Status"
+      },
+      {
+        "command": "aigrc.validateCard",
+        "title": "AIGRC: Validate Asset Card"
+      },
+      {
+        "command": "aigrc.createCard",
+        "title": "AIGRC: Create Asset Card"
+      }
+    ],
+    "views": {
+      "explorer": [
+        {
+          "id": "aigrcAssets",
+          "name": "AI Assets",
+          "when": "aigrc.initialized"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "aigrc",
+          "title": "AIGRC",
+          "icon": "resources/aigrc-icon.svg"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "AIGRC",
+      "properties": {
+        "aigrc.autoScan": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically scan workspace on open"
+        },
+        "aigrc.showInlineWarnings": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show inline warnings for unregistered AI code"
+        },
+        "aigrc.cardsDirectory": {
+          "type": "string",
+          "default": ".aigrc/cards",
+          "description": "Directory for asset cards"
+        }
+      }
+    },
+    "languages": [
+      {
+        "id": "yaml",
+        "extensions": [".aigrc.yaml"],
+        "aliases": ["AIGRC Config"]
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "pnpm run build",
+    "build": "tsup",
+    "watch": "tsup --watch",
+    "package": "vsce package --no-dependencies",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@aigrc/core": "workspace:*",
+    "yaml": "^2.3.4"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.10.0",
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.0",
+    "@vscode/vsce": "^2.22.0"
+  }
+}

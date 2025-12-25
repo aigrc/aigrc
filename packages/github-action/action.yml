@@ -1,0 +1,50 @@
+name: "AIGRC - AI Governance Compliance Check"
+description: "Scan your codebase for AI/ML frameworks and validate compliance with governance policies"
+author: "AIGRC"
+branding:
+  icon: "shield"
+  color: "green"
+
+inputs:
+  directory:
+    description: "Directory to scan (relative to workspace)"
+    required: false
+    default: "."
+  fail-on-high-risk:
+    description: "Fail the action if high-risk AI assets are detected"
+    required: false
+    default: "true"
+  fail-on-unregistered:
+    description: "Fail if AI frameworks are detected without corresponding asset cards"
+    required: false
+    default: "false"
+  validate-cards:
+    description: "Validate all asset cards"
+    required: false
+    default: "true"
+  create-pr-comment:
+    description: "Create a PR comment with the scan results"
+    required: false
+    default: "true"
+  github-token:
+    description: "GitHub token for creating PR comments"
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  detections-count:
+    description: "Number of AI/ML framework detections found"
+  high-confidence-count:
+    description: "Number of high-confidence detections"
+  risk-level:
+    description: "Highest risk level detected (minimal, limited, high, unacceptable)"
+  cards-valid:
+    description: "Whether all asset cards are valid"
+  cards-count:
+    description: "Number of asset cards found"
+  scan-results:
+    description: "Full scan results as JSON"
+
+runs:
+  using: "node20"
+  main: "dist/index.js"

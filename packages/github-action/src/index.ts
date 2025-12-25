@@ -1,0 +1,457 @@
+import * as core from "@actions/core";
+import * as github from "@actions/github";
+import * as path from "path";
+import * as fs from "fs";
+import {
+  scan,
+  initializePatterns,
+  loadAssetCard,
+  validateAssetCard,
+  classifyRisk,
+  suggestAssetCard,
+  type ScanResult,
+  type AssetCard,
+  type ClassificationResult,
+} from "@aigrc/core";
+
+// ─────────────────────────────────────────────────────────────────
+// MAIN ACTION
+// ─────────────────────────────────────────────────────────────────
+
+async function run(): Promise<void> {
+  try {
+    // Get inputs
+    const directory = core.getInput("directory") || ".";
+    const failOnHighRisk = core.getBooleanInput("fail-on-high-risk");
+    const failOnUnregistered = core.getBooleanInput("fail-on-unregistered");
+    const validateCards = core.getBooleanInput("validate-cards");
+    const createPrComment = core.getBooleanInput("create-pr-comment");
+    const githubToken = core.getInput("github-token");
+
+    const workspacePath = process.env.GITHUB_WORKSPACE || process.cwd();
+    const scanPath = path.resolve(workspacePath, directory);
+
+    core.info(`AIGRC: Scanning ${scanPath}`);
+
+    // Initialize pattern registry
+    initializePatterns();
+
+    // Run scan
+    core.startGroup("Scanning for AI/ML frameworks");
+    const scanResult = await scan({
+      directory: scanPath,
+      ignorePatterns: ["node_modules", ".git", "dist", "build", "__pycache__", ".venv", "vendor"],
+    });
+    core.endGroup();
+
+    core.info(`Scanned ${scanResult.scannedFiles} files`);
+    core.info(`Found ${scanResult.detections.length} AI/ML framework detections`);
+
+    // Set outputs
+    core.setOutput("detections-count", scanResult.detections.length);
+    core.setOutput("high-confidence-count", scanResult.summary.byConfidence.high);
+    core.setOutput("scan-results", JSON.stringify(scanResult));
+
+    // Load and validate asset cards
+    const cardsDir = path.join(scanPath, ".aigrc", "cards");
+    const cardResults = await validateAssetCards(cardsDir, validateCards);
+
+    core.setOutput("cards-count", cardResults.cards.length);
+    core.setOutput("cards-valid", cardResults.allValid);
+
+    // Determine highest risk level
+    const highestRisk = determineHighestRisk(cardResults.cards);
+    core.setOutput("risk-level", highestRisk);
+
+    // Log summary
+    logSummary(scanResult, cardResults, highestRisk);
+
+    // Create PR comment if enabled
+    if (createPrComment && github.context.eventName === "pull_request" && githubToken) {
+      await createComment(githubToken, scanResult, cardResults, highestRisk);
+    }
+
+    // Determine if action should fail
+    let shouldFail = false;
+    let failReason = "";
+
+    if (failOnHighRisk && (highestRisk === "high" || highestRisk === "unacceptable")) {
+      shouldFail = true;
+      failReason = `High-risk AI assets detected (${highestRisk})`;
+    }
+
+    if (failOnUnregistered && scanResult.detections.length > 0 && cardResults.cards.length === 0) {
+      shouldFail = true;
+      failReason = `AI frameworks detected but no asset cards found`;
+    }
+
+    if (!cardResults.allValid) {
+      shouldFail = true;
+      failReason = `Invalid asset cards detected`;
+    }
+
+    if (shouldFail) {
+      core.setFailed(failReason);
+    }
+  } catch (error) {
+    if (error instanceof Error) {
+      core.setFailed(error.message);
+    } else {
+      core.setFailed("An unexpected error occurred");
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ASSET CARD VALIDATION
+// ─────────────────────────────────────────────────────────────────
+
+interface CardValidationResult {
+  path: string;
+  card: AssetCard;
+  valid: boolean;
+  errors: string[];
+  classification: ClassificationResult;
+}
+
+interface CardResults {
+  cards: CardValidationResult[];
+  allValid: boolean;
+}
+
+async function validateAssetCards(cardsDir: string, doValidate: boolean): Promise<CardResults> {
+  const results: CardValidationResult[] = [];
+
+  if (!fs.existsSync(cardsDir)) {
+    core.info("No asset cards directory found");
+    return { cards: [], allValid: true };
+  }
+
+  core.startGroup("Validating asset cards");
+
+  try {
+    const files = fs.readdirSync(cardsDir);
+    const yamlFiles = files.filter((f) => f.endsWith(".yaml") || f.endsWith(".yml"));
+
+    for (const file of yamlFiles) {
+      const filePath = path.join(cardsDir, file);
+
+      try {
+        const card = loadAssetCard(filePath);
+        const classification = classifyRisk(card.classification.riskFactors);
+
+        let valid = true;
+        let errors: string[] = [];
+
+        if (doValidate) {
+          const validation = validateAssetCard(card);
+          valid = validation.valid;
+          errors = validation.errors || [];
+        }
+
+        if (valid) {
+          core.info(`  ${file}: Valid (${classification.riskLevel})`);
+        } else {
+          core.warning(`  ${file}: Invalid - ${errors.join(", ")}`);
+        }
+
+        results.push({
+          path: filePath,
+          card,
+          valid,
+          errors,
+          classification,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        core.warning(`  ${file}: Parse error - ${message}`);
+
+        results.push({
+          path: filePath,
+          card: {} as AssetCard,
+          valid: false,
+          errors: [message],
+          classification: { riskLevel: "minimal", reasons: [], euAiActCategory: "", requiredArtifacts: [] },
+        });
+      }
+    }
+  } catch (error) {
+    core.warning(`Failed to read cards directory: ${error}`);
+  }
+
+  core.endGroup();
+
+  const allValid = results.every((r) => r.valid);
+  return { cards: results, allValid };
+}
+
+// ─────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────
+
+function determineHighestRisk(cards: CardValidationResult[]): string {
+  const riskOrder = ["unacceptable", "high", "limited", "minimal"];
+
+  for (const level of riskOrder) {
+    if (cards.some((c) => c.classification.riskLevel === level)) {
+      return level;
+    }
+  }
+
+  return "minimal";
+}
+
+function logSummary(
+  scanResult: ScanResult,
+  cardResults: CardResults,
+  highestRisk: string
+): void {
+  core.info("");
+  core.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+  core.info("AIGRC Scan Summary");
+  core.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+  core.info(`Files scanned:        ${scanResult.scannedFiles}`);
+  core.info(`AI detections:        ${scanResult.detections.length}`);
+  core.info(`High confidence:      ${scanResult.summary.byConfidence.high}`);
+  core.info(`Asset cards:          ${cardResults.cards.length}`);
+  core.info(`Cards valid:          ${cardResults.allValid ? "Yes" : "No"}`);
+  core.info(`Highest risk level:   ${highestRisk.toUpperCase()}`);
+  core.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+  // Log detections by framework
+  if (scanResult.detections.length > 0) {
+    core.info("");
+    core.info("Detected Frameworks:");
+
+    const byFramework = new Map<string, number>();
+    for (const d of scanResult.detections) {
+      byFramework.set(d.framework, (byFramework.get(d.framework) || 0) + 1);
+    }
+
+    for (const [framework, count] of byFramework) {
+      core.info(`  - ${framework}: ${count} occurrences`);
+    }
+  }
+
+  // Log card risk levels
+  if (cardResults.cards.length > 0) {
+    core.info("");
+    core.info("Asset Cards:");
+
+    for (const card of cardResults.cards) {
+      const riskIcon = getRiskIcon(card.classification.riskLevel);
+      core.info(`  ${riskIcon} ${card.card.name}: ${card.classification.riskLevel}`);
+    }
+  }
+}
+
+function getRiskIcon(level: string): string {
+  switch (level) {
+    case "minimal":
+      return "🟢";
+    case "limited":
+      return "🟡";
+    case "high":
+      return "🟠";
+    case "unacceptable":
+      return "🔴";
+    default:
+      return "⚪";
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// PR COMMENT
+// ─────────────────────────────────────────────────────────────────
+
+async function createComment(
+  token: string,
+  scanResult: ScanResult,
+  cardResults: CardResults,
+  highestRisk: string
+): Promise<void> {
+  try {
+    const octokit = github.getOctokit(token);
+    const { owner, repo } = github.context.repo;
+    const prNumber = github.context.payload.pull_request?.number;
+
+    if (!prNumber) {
+      core.warning("No PR number found, skipping comment");
+      return;
+    }
+
+    const body = generateCommentBody(scanResult, cardResults, highestRisk);
+
+    // Check for existing comment to update
+    const { data: comments } = await octokit.rest.issues.listComments({
+      owner,
+      repo,
+      issue_number: prNumber,
+    });
+
+    const existingComment = comments.find((c) =>
+      c.body?.includes("<!-- aigrc-action-comment -->")
+    );
+
+    if (existingComment) {
+      await octokit.rest.issues.updateComment({
+        owner,
+        repo,
+        comment_id: existingComment.id,
+        body,
+      });
+      core.info("Updated existing PR comment");
+    } else {
+      await octokit.rest.issues.createComment({
+        owner,
+        repo,
+        issue_number: prNumber,
+        body,
+      });
+      core.info("Created PR comment");
+    }
+  } catch (error) {
+    core.warning(`Failed to create PR comment: ${error}`);
+  }
+}
+
+function generateCommentBody(
+  scanResult: ScanResult,
+  cardResults: CardResults,
+  highestRisk: string
+): string {
+  const statusIcon = getStatusIcon(highestRisk, cardResults.allValid);
+
+  let body = `<!-- aigrc-action-comment -->
+## ${statusIcon} AIGRC Governance Report
+
+### Summary
+
+| Metric | Value |
+|--------|-------|
+| Files Scanned | ${scanResult.scannedFiles} |
+| AI Detections | ${scanResult.detections.length} |
+| High Confidence | ${scanResult.summary.byConfidence.high} |
+| Asset Cards | ${cardResults.cards.length} |
+| Cards Valid | ${cardResults.allValid ? "✅ Yes" : "❌ No"} |
+| Risk Level | ${getRiskIcon(highestRisk)} ${highestRisk.toUpperCase()} |
+
+`;
+
+  // Detected frameworks
+  if (scanResult.detections.length > 0) {
+    body += `### Detected AI/ML Frameworks
+
+| Framework | Category | Count |
+|-----------|----------|-------|
+`;
+
+    const byFramework = new Map<string, { category: string; count: number }>();
+    for (const d of scanResult.detections) {
+      const key = d.framework;
+      const existing = byFramework.get(key);
+      if (existing) {
+        existing.count++;
+      } else {
+        byFramework.set(key, { category: d.category, count: 1 });
+      }
+    }
+
+    for (const [framework, data] of byFramework) {
+      body += `| ${framework} | ${data.category} | ${data.count} |\n`;
+    }
+
+    body += "\n";
+  }
+
+  // Asset cards
+  if (cardResults.cards.length > 0) {
+    body += `### Registered Assets
+
+| Asset | Risk Level | EU AI Act Category | Status |
+|-------|------------|-------------------|--------|
+`;
+
+    for (const card of cardResults.cards) {
+      const status = card.valid ? "✅ Valid" : "❌ Invalid";
+      const euCategory = card.classification.euAiActCategory || "—";
+      body += `| ${card.card.name} | ${getRiskIcon(card.classification.riskLevel)} ${card.classification.riskLevel} | ${euCategory} | ${status} |\n`;
+    }
+
+    body += "\n";
+  }
+
+  // Inferred risk factors
+  const riskFactors = scanResult.inferredRiskFactors;
+  if (Object.keys(riskFactors).length > 0) {
+    body += `### Inferred Risk Factors
+
+| Factor | Value |
+|--------|-------|
+`;
+
+    const formatValue = (v: boolean | string | undefined): string => {
+      if (v === true || v === "yes") return "⚠️ Yes";
+      if (v === false || v === "no") return "✅ No";
+      return "❓ Unknown";
+    };
+
+    if (riskFactors.autonomousDecisions !== undefined) {
+      body += `| Autonomous Decisions | ${formatValue(riskFactors.autonomousDecisions)} |\n`;
+    }
+    if (riskFactors.customerFacing !== undefined) {
+      body += `| Customer Facing | ${formatValue(riskFactors.customerFacing)} |\n`;
+    }
+    if (riskFactors.toolExecution !== undefined) {
+      body += `| Tool Execution | ${formatValue(riskFactors.toolExecution)} |\n`;
+    }
+    if (riskFactors.externalDataAccess !== undefined) {
+      body += `| External Data Access | ${formatValue(riskFactors.externalDataAccess)} |\n`;
+    }
+    if (riskFactors.piiProcessing !== undefined) {
+      body += `| PII Processing | ${formatValue(riskFactors.piiProcessing)} |\n`;
+    }
+    if (riskFactors.highStakesDecisions !== undefined) {
+      body += `| High-Stakes Decisions | ${formatValue(riskFactors.highStakesDecisions)} |\n`;
+    }
+
+    body += "\n";
+  }
+
+  // Suggestion if no cards
+  if (scanResult.detections.length > 0 && cardResults.cards.length === 0) {
+    const suggestion = suggestAssetCard(scanResult);
+
+    body += `### Suggested Asset Card
+
+No asset cards are registered for this codebase. Consider creating one:
+
+\`\`\`yaml
+name: ${suggestion.name}
+description: ${suggestion.description}
+technical:
+  type: ${suggestion.technical.type}
+  framework: ${suggestion.technical.framework}
+\`\`\`
+
+Run \`aigrc init\` to generate a full asset card.
+
+`;
+  }
+
+  body += `---
+*Generated by [AIGRC](https://github.com/aigrc/aigrc) at ${new Date().toISOString()}*`;
+
+  return body;
+}
+
+function getStatusIcon(highestRisk: string, allValid: boolean): string {
+  if (!allValid) return "❌";
+  if (highestRisk === "unacceptable") return "🚫";
+  if (highestRisk === "high") return "⚠️";
+  if (highestRisk === "limited") return "🔶";
+  return "✅";
+}
+
+// Run the action
+run();

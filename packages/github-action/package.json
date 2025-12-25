@@ -1,0 +1,23 @@
+{
+  "name": "@aigrc/github-action",
+  "version": "0.1.0",
+  "description": "GitHub Action for AI Governance, Risk, Compliance - Scan and validate AI assets in CI/CD",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsup",
+    "watch": "tsup --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@actions/core": "^1.10.1",
+    "@actions/github": "^6.0.0",
+    "@aigrc/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.0"
+  }
+}
