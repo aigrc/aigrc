@@ -1,0 +1,166 @@
+# EU AI Act Compliance Profile
+# European Union Artificial Intelligence Act
+
+id: eu-ai-act
+name: EU AI Act
+version: "2024.1"
+jurisdiction: EU
+description: European Union Artificial Intelligence Act
+effectiveDate: "2024-08-01"
+sourceDocument: Regulation (EU) 2024/1689
+sourceUrl: https://eur-lex.europa.eu/eli/reg/2024/1689/oj
+
+riskLevels:
+  - minimal
+  - limited
+  - high
+  - unacceptable
+
+riskLevelMapping:
+  minimal: minimal
+  limited: limited
+  high: high
+  unacceptable: unacceptable
+
+trustworthinessCharacteristics:
+  - transparency
+  - safety
+  - security
+  - fairness
+  - accountability
+  - human_oversight
+
+controls:
+  - id: eu-art-9
+    name: Risk Management System
+    description: Establish and maintain a risk management system
+    applicableRiskLevels:
+      - high
+    required: true
+    category: Risk Management
+    crosswalkIds:
+      us-omb-m24:
+        - us-aia
+      nist-ai-rmf:
+        - nist-govern
+        - nist-manage
+      iso-42001:
+        - iso-a6
+
+  - id: eu-art-10
+    name: Data Governance
+    description: Training, validation and testing data governance
+    applicableRiskLevels:
+      - high
+    required: true
+    category: Data Governance
+    crosswalkIds:
+      nist-ai-rmf:
+        - nist-map
+      iso-42001:
+        - iso-a8
+
+  - id: eu-art-11
+    name: Technical Documentation
+    description: Comprehensive technical documentation
+    applicableRiskLevels:
+      - high
+    required: true
+    category: Documentation
+    crosswalkIds:
+      nist-ai-rmf:
+        - nist-map
+      iso-42001:
+        - iso-a7
+
+  - id: eu-art-12
+    name: Record Keeping
+    description: Automatic logging and record keeping
+    applicableRiskLevels:
+      - high
+    required: true
+    category: Logging
+    crosswalkIds:
+      nist-ai-rmf:
+        - nist-measure
+      iso-42001:
+        - iso-a9
+
+  - id: eu-art-13
+    name: Transparency
+    description: Transparency and provision of information to deployers
+    applicableRiskLevels:
+      - high
+      - limited
+    required: true
+    category: Transparency
+    crosswalkIds:
+      us-omb-m24:
+        - us-notice
+      nist-ai-rmf:
+        - nist-govern
+      iso-42001:
+        - iso-a7
+
+  - id: eu-art-14
+    name: Human Oversight
+    description: Human oversight measures
+    applicableRiskLevels:
+      - high
+    required: true
+    category: Oversight
+    crosswalkIds:
+      us-omb-m24:
+        - us-human-oversight
+      nist-ai-rmf:
+        - nist-govern
+      iso-42001:
+        - iso-a8
+
+  - id: eu-art-15
+    name: Accuracy and Robustness
+    description: Accuracy, robustness and cybersecurity
+    applicableRiskLevels:
+      - high
+    required: true
+    category: Technical
+    crosswalkIds:
+      us-omb-m24:
+        - us-safety-testing
+      nist-ai-rmf:
+        - nist-measure
+      iso-42001:
+        - iso-a9
+
+  - id: eu-art-50
+    name: Transparency Obligations
+    description: Inform users of AI interaction
+    applicableRiskLevels:
+      - limited
+    required: true
+    category: Transparency
+
+artifactTemplates:
+  - id: risk-management-plan
+    name: Risk Management Plan
+    description: Article 9 compliant risk management documentation
+    format: markdown
+    requiredFor:
+      - high
+    templatePath: templates/eu/risk-management-plan.md
+
+  - id: technical-documentation
+    name: Technical Documentation
+    description: Article 11 compliant technical documentation
+    format: markdown
+    requiredFor:
+      - high
+    templatePath: templates/eu/technical-documentation.md
+
+  - id: conformity-declaration
+    name: EU Declaration of Conformity
+    description: Self-declaration of conformity
+    format: pdf
+    requiredFor:
+      - high
+    templatePath: templates/eu/conformity-declaration.md

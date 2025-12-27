@@ -2,11 +2,17 @@
  * Compliance Service
  *
  * Checks asset compliance against profiles and identifies gaps.
+ * Supports both individual profiles and stacked multi-profile compliance.
  */
 
 import { type AssetCard } from "@aigrc/core";
 import { AIGRCConfig } from "../config.js";
 import { ProfileService, ControlDefinition, ArtifactTemplate } from "./profiles.js";
+import {
+  StackedProfileService,
+  StackedProfile,
+  StackedClassification,
+} from "./stacked-profiles.js";
 
 export interface ControlStatus {
   controlId: string;
@@ -47,11 +53,29 @@ export interface Gap {
   remediation: string;
 }
 
+/**
+ * Stacked compliance status combining multiple profiles
+ */
+export interface StackedComplianceStatus {
+  stackedProfileId: string;
+  sourceProfiles: string[];
+  strictestRiskLevel: string;
+  overallCompliant: boolean;
+  overallPercentage: number;
+  profileStatuses: ComplianceStatus[];
+  allGaps: string[];
+  allMissingArtifacts: string[];
+}
+
 export class ComplianceService {
+  private stackedProfileService: StackedProfileService;
+
   constructor(
     private config: AIGRCConfig,
     private profileService: ProfileService
-  ) {}
+  ) {
+    this.stackedProfileService = new StackedProfileService(profileService);
+  }
 
   /**
    * Check compliance for an asset against a specific profile
@@ -504,5 +528,129 @@ export class ComplianceService {
     if (totalGaps > 10) return "3-4 weeks";
     if (totalGaps > 5) return "1-2 weeks";
     return "A few days";
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // STACKED PROFILE COMPLIANCE
+  // ─────────────────────────────────────────────────────────────────
+
+  /**
+   * Get the stacked profile service for advanced operations
+   */
+  getStackedProfileService(): StackedProfileService {
+    return this.stackedProfileService;
+  }
+
+  /**
+   * Check compliance against a stacked (combined) profile
+   */
+  checkStackedCompliance(
+    card: AssetCard,
+    profileIds?: string[]
+  ): StackedComplianceStatus {
+    const profiles = profileIds || this.config.profiles;
+
+    // Create stacked profile
+    const stacked = this.stackedProfileService.stack(profiles);
+
+    // Check compliance against each source profile
+    const profileStatuses: ComplianceStatus[] = [];
+    for (const profileId of stacked.sourceProfiles) {
+      try {
+        const status = this.checkCompliance(card, profileId);
+        profileStatuses.push(status);
+      } catch {
+        // Skip profiles that fail
+      }
+    }
+
+    // Aggregate results
+    const allGaps: string[] = [];
+    const allMissingArtifacts: string[] = [];
+    let totalPercentage = 0;
+
+    for (const status of profileStatuses) {
+      allGaps.push(...status.gaps);
+      allMissingArtifacts.push(...status.missingArtifacts);
+      totalPercentage += status.percentage;
+    }
+
+    // Deduplicate
+    const uniqueGaps = [...new Set(allGaps)];
+    const uniqueArtifacts = [...new Set(allMissingArtifacts)];
+
+    // Calculate overall percentage
+    const overallPercentage =
+      profileStatuses.length > 0
+        ? Math.round(totalPercentage / profileStatuses.length)
+        : 100;
+
+    // Get strictest risk level
+    const classification = this.stackedProfileService.classify(
+      card.classification.riskLevel,
+      stacked
+    );
+
+    return {
+      stackedProfileId: stacked.id,
+      sourceProfiles: stacked.sourceProfiles,
+      strictestRiskLevel: classification.strictestRiskLevel,
+      overallCompliant: profileStatuses.every((s) => s.compliant),
+      overallPercentage,
+      profileStatuses,
+      allGaps: uniqueGaps,
+      allMissingArtifacts: uniqueArtifacts,
+    };
+  }
+
+  /**
+   * Format stacked compliance status as markdown
+   */
+  formatStackedComplianceStatus(status: StackedComplianceStatus): string {
+    const lines: string[] = [];
+
+    lines.push(`## Stacked Compliance: ${status.stackedProfileId}\n`);
+    lines.push(`**Source Profiles:** ${status.sourceProfiles.join(", ")}`);
+    lines.push(`**Strictest Risk Level:** ${status.strictestRiskLevel.toUpperCase()}`);
+    lines.push(`**Overall Compliant:** ${status.overallCompliant ? "Yes" : "No"}`);
+    lines.push(`**Overall Percentage:** ${status.overallPercentage}%\n`);
+
+    // Summary table
+    lines.push("### Per-Profile Summary\n");
+    lines.push("| Profile | Risk Level | Compliant | Percentage |");
+    lines.push("|---------|------------|-----------|------------|");
+
+    for (const ps of status.profileStatuses) {
+      lines.push(
+        `| ${ps.profileName} | ${ps.riskLevel} | ${ps.compliant ? "Yes" : "No"} | ${ps.percentage}% |`
+      );
+    }
+
+    // Combined gaps
+    if (status.allGaps.length > 0) {
+      lines.push("\n### All Gaps (Combined)\n");
+      for (const gap of status.allGaps) {
+        lines.push(`- ${gap}`);
+      }
+    }
+
+    // Missing artifacts
+    if (status.allMissingArtifacts.length > 0) {
+      lines.push("\n### Missing Artifacts (Combined)\n");
+      for (const artifact of status.allMissingArtifacts) {
+        lines.push(`- ${artifact}`);
+      }
+    }
+
+    // Detailed per-profile
+    lines.push("\n---\n");
+    lines.push("### Detailed Per-Profile Status\n");
+
+    for (const ps of status.profileStatuses) {
+      lines.push(this.formatComplianceStatus(ps));
+      lines.push("\n");
+    }
+
+    return lines.join("\n");
   }
 }

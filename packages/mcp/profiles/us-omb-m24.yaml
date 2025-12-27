@@ -1,0 +1,131 @@
+# US OMB M-24-10/M-24-18 Compliance Profile
+# US Federal AI Governance Memoranda
+
+id: us-omb-m24
+name: US OMB M-24-10/M-24-18
+version: "2024.1"
+jurisdiction: US
+description: US Federal AI governance memoranda for rights-impacting and safety-impacting AI
+effectiveDate: "2024-12-01"
+sourceDocument: OMB Memorandum M-24-10, M-24-18
+sourceUrl: https://www.whitehouse.gov/omb/briefing-room/2024/03/28/omb-releases-implementation-guidance-following-president-bidens-executive-order-on-artificial-intelligence/
+
+riskLevels:
+  - neither
+  - rights-impacting
+  - safety-impacting
+
+riskLevelMapping:
+  minimal: neither
+  limited: neither
+  high: rights-impacting
+  unacceptable: safety-impacting
+
+trustworthinessCharacteristics:
+  - safety
+  - equity
+  - transparency
+  - accountability
+  - human_oversight
+
+controls:
+  - id: us-aia
+    name: AI Impact Assessment
+    description: Documented AI Impact Assessment
+    applicableRiskLevels:
+      - rights-impacting
+      - safety-impacting
+    required: true
+    category: Assessment
+    crosswalkIds:
+      eu-ai-act:
+        - eu-art-9
+      nist-ai-rmf:
+        - nist-govern
+        - nist-manage
+      iso-42001:
+        - iso-a6
+
+  - id: us-human-oversight
+    name: Human Oversight
+    description: Meaningful human oversight mechanisms
+    applicableRiskLevels:
+      - rights-impacting
+      - safety-impacting
+    required: true
+    category: Oversight
+    crosswalkIds:
+      eu-ai-act:
+        - eu-art-14
+      nist-ai-rmf:
+        - nist-govern
+      iso-42001:
+        - iso-a8
+
+  - id: us-equity
+    name: Equity Assessment
+    description: Assessment of disparate impacts
+    applicableRiskLevels:
+      - rights-impacting
+    required: true
+    category: Equity
+    crosswalkIds:
+      nist-ai-rmf:
+        - nist-manage
+
+  - id: us-notice
+    name: Affected Individual Notice
+    description: Notice to individuals affected by AI decisions
+    applicableRiskLevels:
+      - rights-impacting
+    required: true
+    category: Transparency
+    crosswalkIds:
+      eu-ai-act:
+        - eu-art-13
+        - eu-art-50
+      nist-ai-rmf:
+        - nist-govern
+      iso-42001:
+        - iso-a7
+
+  - id: us-appeal
+    name: Appeal Process
+    description: Process for affected individuals to appeal
+    applicableRiskLevels:
+      - rights-impacting
+    required: true
+    category: Remediation
+
+  - id: us-safety-testing
+    name: Safety Testing
+    description: Comprehensive safety testing documentation
+    applicableRiskLevels:
+      - safety-impacting
+    required: true
+    category: Testing
+    crosswalkIds:
+      eu-ai-act:
+        - eu-art-15
+      nist-ai-rmf:
+        - nist-measure
+      iso-42001:
+        - iso-a9
+
+artifactTemplates:
+  - id: ai-impact-assessment
+    name: AI Impact Assessment
+    description: OMB required impact assessment
+    format: markdown
+    requiredFor:
+      - rights-impacting
+      - safety-impacting
+    templatePath: templates/us/ai-impact-assessment.md
+
+  - id: equity-assessment
+    name: Equity Assessment
+    description: Disparate impact analysis
+    format: markdown
+    requiredFor:
+      - rights-impacting
+    templatePath: templates/us/equity-assessment.md

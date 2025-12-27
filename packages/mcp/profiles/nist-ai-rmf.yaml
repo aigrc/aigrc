@@ -1,0 +1,136 @@
+# NIST AI Risk Management Framework Profile
+# NIST AI RMF 1.0
+
+id: nist-ai-rmf
+name: NIST AI RMF
+version: "1.0"
+jurisdiction: US
+description: NIST AI Risk Management Framework
+sourceDocument: NIST AI RMF 1.0
+sourceUrl: https://www.nist.gov/itl/ai-risk-management-framework
+
+riskLevels:
+  - minimal
+  - low
+  - moderate
+  - high
+  - critical
+
+riskLevelMapping:
+  minimal: minimal
+  limited: low
+  high: high
+  unacceptable: critical
+
+trustworthinessCharacteristics:
+  - valid
+  - reliable
+  - safe
+  - secure
+  - accountable
+  - transparent
+  - explainable
+  - privacy_enhanced
+  - fair
+
+controls:
+  - id: nist-govern
+    name: GOVERN Function
+    description: AI governance policies and procedures
+    applicableRiskLevels:
+      - minimal
+      - low
+      - moderate
+      - high
+      - critical
+    required: true
+    category: Governance
+    crosswalkIds:
+      eu-ai-act:
+        - eu-art-9
+        - eu-art-13
+        - eu-art-14
+      us-omb-m24:
+        - us-aia
+        - us-human-oversight
+        - us-notice
+      iso-42001:
+        - iso-a5
+        - iso-a6
+
+  - id: nist-map
+    name: MAP Function
+    description: Context and risk mapping
+    applicableRiskLevels:
+      - low
+      - moderate
+      - high
+      - critical
+    required: true
+    category: Risk Mapping
+    crosswalkIds:
+      eu-ai-act:
+        - eu-art-10
+        - eu-art-11
+      iso-42001:
+        - iso-a6
+        - iso-a7
+
+  - id: nist-measure
+    name: MEASURE Function
+    description: Risk measurement and monitoring
+    applicableRiskLevels:
+      - low
+      - moderate
+      - high
+      - critical
+    required: true
+    category: Measurement
+    crosswalkIds:
+      eu-ai-act:
+        - eu-art-12
+        - eu-art-15
+      us-omb-m24:
+        - us-safety-testing
+      iso-42001:
+        - iso-a9
+
+  - id: nist-manage
+    name: MANAGE Function
+    description: Risk treatment and response
+    applicableRiskLevels:
+      - low
+      - moderate
+      - high
+      - critical
+    required: true
+    category: Management
+    crosswalkIds:
+      eu-ai-act:
+        - eu-art-9
+      us-omb-m24:
+        - us-aia
+        - us-equity
+      iso-42001:
+        - iso-a8
+        - iso-a10
+
+artifactTemplates:
+  - id: nist-profile
+    name: NIST AI RMF Profile
+    description: Organization-specific AI RMF profile
+    format: yaml
+    requiredFor:
+      - moderate
+      - high
+      - critical
+    templatePath: templates/nist/ai-rmf-profile.yaml
+
+  - id: nist-playbook
+    name: NIST AI RMF Playbook
+    description: Implementation playbook for AI RMF
+    format: markdown
+    requiredFor:
+      - high
+      - critical
+    templatePath: templates/nist/ai-rmf-playbook.md

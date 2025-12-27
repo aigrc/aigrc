@@ -1,0 +1,162 @@
+# ISO/IEC 42001 Compliance Profile
+# AI Management System Standard
+
+id: iso-42001
+name: ISO/IEC 42001
+version: "2023"
+jurisdiction: International
+description: AI Management System Standard
+sourceDocument: ISO/IEC 42001:2023
+sourceUrl: https://www.iso.org/standard/81230.html
+
+riskLevels:
+  - low
+  - medium
+  - high
+  - critical
+
+riskLevelMapping:
+  minimal: low
+  limited: medium
+  high: high
+  unacceptable: critical
+
+trustworthinessCharacteristics:
+  - reliability
+  - safety
+  - security
+  - transparency
+  - accountability
+  - fairness
+  - privacy
+
+controls:
+  - id: iso-a5
+    name: Leadership and Commitment
+    description: Top management commitment to AIMS
+    applicableRiskLevels:
+      - low
+      - medium
+      - high
+      - critical
+    required: true
+    category: Leadership
+    crosswalkIds:
+      nist-ai-rmf:
+        - nist-govern
+
+  - id: iso-a6
+    name: Planning
+    description: AI risk and opportunity planning
+    applicableRiskLevels:
+      - low
+      - medium
+      - high
+      - critical
+    required: true
+    category: Planning
+    crosswalkIds:
+      eu-ai-act:
+        - eu-art-9
+      us-omb-m24:
+        - us-aia
+      nist-ai-rmf:
+        - nist-govern
+        - nist-map
+
+  - id: iso-a7
+    name: Support
+    description: Resources, competence, awareness
+    applicableRiskLevels:
+      - medium
+      - high
+      - critical
+    required: true
+    category: Support
+    crosswalkIds:
+      eu-ai-act:
+        - eu-art-11
+        - eu-art-13
+      us-omb-m24:
+        - us-notice
+      nist-ai-rmf:
+        - nist-map
+
+  - id: iso-a8
+    name: Operation
+    description: Operational planning and control
+    applicableRiskLevels:
+      - medium
+      - high
+      - critical
+    required: true
+    category: Operations
+    crosswalkIds:
+      eu-ai-act:
+        - eu-art-10
+        - eu-art-14
+      us-omb-m24:
+        - us-human-oversight
+      nist-ai-rmf:
+        - nist-manage
+
+  - id: iso-a9
+    name: Performance Evaluation
+    description: Monitoring, measurement, analysis
+    applicableRiskLevels:
+      - medium
+      - high
+      - critical
+    required: true
+    category: Performance
+    crosswalkIds:
+      eu-ai-act:
+        - eu-art-12
+        - eu-art-15
+      us-omb-m24:
+        - us-safety-testing
+      nist-ai-rmf:
+        - nist-measure
+
+  - id: iso-a10
+    name: Improvement
+    description: Continual improvement
+    applicableRiskLevels:
+      - high
+      - critical
+    required: true
+    category: Improvement
+    crosswalkIds:
+      nist-ai-rmf:
+        - nist-manage
+
+artifactTemplates:
+  - id: aims-policy
+    name: AIMS Policy
+    description: AI Management System Policy
+    format: markdown
+    requiredFor:
+      - low
+      - medium
+      - high
+      - critical
+    templatePath: templates/iso/aims-policy.md
+
+  - id: aims-manual
+    name: AIMS Manual
+    description: AI Management System Manual
+    format: markdown
+    requiredFor:
+      - high
+      - critical
+    templatePath: templates/iso/aims-manual.md
+
+  - id: risk-treatment-plan
+    name: Risk Treatment Plan
+    description: AI risk treatment plan
+    format: markdown
+    requiredFor:
+      - medium
+      - high
+      - critical
+    templatePath: templates/iso/risk-treatment-plan.md

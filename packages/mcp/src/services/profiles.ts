@@ -2,341 +2,57 @@
  * Profile Service
  *
  * Manages compliance profile loading and configuration.
+ * Supports loading profiles from YAML files and custom paths.
  */
 
 import { AIGRCConfig } from "../config.js";
+import { ProfileLoader, createProfileLoader } from "./profile-loader.js";
+import {
+  ComplianceProfile,
+  ControlDefinition,
+  ArtifactTemplate,
+} from "../schemas/profile.js";
 
-export interface ComplianceProfile {
-  id: string;
-  name: string;
-  version: string;
-  jurisdiction: string;
-  description: string;
-  effectiveDate?: string;
-  controls: ControlDefinition[];
-  riskLevels: string[];
-  artifactTemplates: ArtifactTemplate[];
-}
-
-export interface ControlDefinition {
-  id: string;
-  name: string;
-  description: string;
-  applicableRiskLevels: string[];
-  required: boolean;
-  category: string;
-}
-
-export interface ArtifactTemplate {
-  id: string;
-  name: string;
-  description: string;
-  format: "markdown" | "yaml" | "json" | "pdf";
-  requiredFor: string[];
-}
-
-// Built-in profiles
-const BUILTIN_PROFILES: ComplianceProfile[] = [
-  {
-    id: "eu-ai-act",
-    name: "EU AI Act",
-    version: "2024.1",
-    jurisdiction: "EU",
-    description: "European Union Artificial Intelligence Act",
-    effectiveDate: "2024-08-01",
-    riskLevels: ["minimal", "limited", "high", "unacceptable"],
-    controls: [
-      {
-        id: "eu-art-9",
-        name: "Risk Management System",
-        description: "Establish and maintain a risk management system",
-        applicableRiskLevels: ["high"],
-        required: true,
-        category: "Risk Management",
-      },
-      {
-        id: "eu-art-10",
-        name: "Data Governance",
-        description: "Training, validation and testing data governance",
-        applicableRiskLevels: ["high"],
-        required: true,
-        category: "Data Governance",
-      },
-      {
-        id: "eu-art-11",
-        name: "Technical Documentation",
-        description: "Comprehensive technical documentation",
-        applicableRiskLevels: ["high"],
-        required: true,
-        category: "Documentation",
-      },
-      {
-        id: "eu-art-12",
-        name: "Record Keeping",
-        description: "Automatic logging and record keeping",
-        applicableRiskLevels: ["high"],
-        required: true,
-        category: "Logging",
-      },
-      {
-        id: "eu-art-13",
-        name: "Transparency",
-        description: "Transparency and provision of information to deployers",
-        applicableRiskLevels: ["high", "limited"],
-        required: true,
-        category: "Transparency",
-      },
-      {
-        id: "eu-art-14",
-        name: "Human Oversight",
-        description: "Human oversight measures",
-        applicableRiskLevels: ["high"],
-        required: true,
-        category: "Oversight",
-      },
-      {
-        id: "eu-art-15",
-        name: "Accuracy and Robustness",
-        description: "Accuracy, robustness and cybersecurity",
-        applicableRiskLevels: ["high"],
-        required: true,
-        category: "Technical",
-      },
-      {
-        id: "eu-art-50",
-        name: "Transparency Obligations",
-        description: "Inform users of AI interaction",
-        applicableRiskLevels: ["limited"],
-        required: true,
-        category: "Transparency",
-      },
-    ],
-    artifactTemplates: [
-      {
-        id: "risk-management-plan",
-        name: "Risk Management Plan",
-        description: "Article 9 compliant risk management documentation",
-        format: "markdown",
-        requiredFor: ["high"],
-      },
-      {
-        id: "technical-documentation",
-        name: "Technical Documentation",
-        description: "Article 11 compliant technical documentation",
-        format: "markdown",
-        requiredFor: ["high"],
-      },
-      {
-        id: "conformity-declaration",
-        name: "EU Declaration of Conformity",
-        description: "Self-declaration of conformity",
-        format: "pdf",
-        requiredFor: ["high"],
-      },
-    ],
-  },
-  {
-    id: "us-omb-m24",
-    name: "US OMB M-24-10/M-24-18",
-    version: "2024.1",
-    jurisdiction: "US",
-    description: "US Federal AI governance memoranda",
-    effectiveDate: "2024-12-01",
-    riskLevels: ["neither", "rights-impacting", "safety-impacting"],
-    controls: [
-      {
-        id: "us-aia",
-        name: "AI Impact Assessment",
-        description: "Documented AI Impact Assessment",
-        applicableRiskLevels: ["rights-impacting", "safety-impacting"],
-        required: true,
-        category: "Assessment",
-      },
-      {
-        id: "us-human-oversight",
-        name: "Human Oversight",
-        description: "Meaningful human oversight mechanisms",
-        applicableRiskLevels: ["rights-impacting", "safety-impacting"],
-        required: true,
-        category: "Oversight",
-      },
-      {
-        id: "us-equity",
-        name: "Equity Assessment",
-        description: "Assessment of disparate impacts",
-        applicableRiskLevels: ["rights-impacting"],
-        required: true,
-        category: "Equity",
-      },
-      {
-        id: "us-notice",
-        name: "Affected Individual Notice",
-        description: "Notice to individuals affected by AI decisions",
-        applicableRiskLevels: ["rights-impacting"],
-        required: true,
-        category: "Transparency",
-      },
-      {
-        id: "us-appeal",
-        name: "Appeal Process",
-        description: "Process for affected individuals to appeal",
-        applicableRiskLevels: ["rights-impacting"],
-        required: true,
-        category: "Remediation",
-      },
-      {
-        id: "us-safety-testing",
-        name: "Safety Testing",
-        description: "Comprehensive safety testing documentation",
-        applicableRiskLevels: ["safety-impacting"],
-        required: true,
-        category: "Testing",
-      },
-    ],
-    artifactTemplates: [
-      {
-        id: "ai-impact-assessment",
-        name: "AI Impact Assessment",
-        description: "OMB required impact assessment",
-        format: "markdown",
-        requiredFor: ["rights-impacting", "safety-impacting"],
-      },
-      {
-        id: "equity-assessment",
-        name: "Equity Assessment",
-        description: "Disparate impact analysis",
-        format: "markdown",
-        requiredFor: ["rights-impacting"],
-      },
-    ],
-  },
-  {
-    id: "nist-ai-rmf",
-    name: "NIST AI RMF",
-    version: "1.0",
-    jurisdiction: "US",
-    description: "NIST AI Risk Management Framework",
-    riskLevels: ["minimal", "low", "moderate", "high", "critical"],
-    controls: [
-      {
-        id: "nist-govern",
-        name: "GOVERN Function",
-        description: "AI governance policies and procedures",
-        applicableRiskLevels: ["minimal", "low", "moderate", "high", "critical"],
-        required: true,
-        category: "Governance",
-      },
-      {
-        id: "nist-map",
-        name: "MAP Function",
-        description: "Context and risk mapping",
-        applicableRiskLevels: ["low", "moderate", "high", "critical"],
-        required: true,
-        category: "Risk Mapping",
-      },
-      {
-        id: "nist-measure",
-        name: "MEASURE Function",
-        description: "Risk measurement and monitoring",
-        applicableRiskLevels: ["low", "moderate", "high", "critical"],
-        required: true,
-        category: "Measurement",
-      },
-      {
-        id: "nist-manage",
-        name: "MANAGE Function",
-        description: "Risk treatment and response",
-        applicableRiskLevels: ["low", "moderate", "high", "critical"],
-        required: true,
-        category: "Management",
-      },
-    ],
-    artifactTemplates: [
-      {
-        id: "nist-profile",
-        name: "NIST AI RMF Profile",
-        description: "Organization-specific AI RMF profile",
-        format: "yaml",
-        requiredFor: ["moderate", "high", "critical"],
-      },
-    ],
-  },
-  {
-    id: "iso-42001",
-    name: "ISO/IEC 42001",
-    version: "2023",
-    jurisdiction: "International",
-    description: "AI Management System Standard",
-    riskLevels: ["low", "medium", "high", "critical"],
-    controls: [
-      {
-        id: "iso-a5",
-        name: "Leadership and commitment",
-        description: "Top management commitment to AIMS",
-        applicableRiskLevels: ["low", "medium", "high", "critical"],
-        required: true,
-        category: "Leadership",
-      },
-      {
-        id: "iso-a6",
-        name: "Planning",
-        description: "AI risk and opportunity planning",
-        applicableRiskLevels: ["low", "medium", "high", "critical"],
-        required: true,
-        category: "Planning",
-      },
-      {
-        id: "iso-a7",
-        name: "Support",
-        description: "Resources, competence, awareness",
-        applicableRiskLevels: ["medium", "high", "critical"],
-        required: true,
-        category: "Support",
-      },
-      {
-        id: "iso-a8",
-        name: "Operation",
-        description: "Operational planning and control",
-        applicableRiskLevels: ["medium", "high", "critical"],
-        required: true,
-        category: "Operations",
-      },
-      {
-        id: "iso-a9",
-        name: "Performance evaluation",
-        description: "Monitoring, measurement, analysis",
-        applicableRiskLevels: ["medium", "high", "critical"],
-        required: true,
-        category: "Performance",
-      },
-      {
-        id: "iso-a10",
-        name: "Improvement",
-        description: "Continual improvement",
-        applicableRiskLevels: ["high", "critical"],
-        required: true,
-        category: "Improvement",
-      },
-    ],
-    artifactTemplates: [
-      {
-        id: "aims-policy",
-        name: "AIMS Policy",
-        description: "AI Management System Policy",
-        format: "markdown",
-        requiredFor: ["low", "medium", "high", "critical"],
-      },
-    ],
-  },
-];
+// Re-export types for backward compatibility
+export type { ComplianceProfile, ControlDefinition, ArtifactTemplate };
 
 export class ProfileService {
   private profiles: Map<string, ComplianceProfile> = new Map();
+  private loader: ProfileLoader;
+  private initialized = false;
 
   constructor(private config: AIGRCConfig) {
-    // Load built-in profiles
-    for (const profile of BUILTIN_PROFILES) {
-      this.profiles.set(profile.id, profile);
+    this.loader = createProfileLoader({
+      customProfilePaths: config.customProfilePaths,
+      verbose: config.logLevel === "debug",
+    });
+  }
+
+  /**
+   * Initialize the service by loading all profiles.
+   * Must be called before using other methods.
+   */
+  async initialize(): Promise<void> {
+    if (this.initialized) return;
+
+    const result = this.loader.loadAll();
+    this.profiles = result.profiles;
+
+    if (result.errors.length > 0 && this.config.logLevel === "debug") {
+      console.warn("Profile loading errors:", result.errors);
+    }
+
+    this.initialized = true;
+  }
+
+  /**
+   * Ensure service is initialized (sync fallback using loader)
+   */
+  private ensureInitialized(): void {
+    if (!this.initialized) {
+      const result = this.loader.loadAll();
+      this.profiles = result.profiles;
+      this.initialized = true;
     }
   }
 
@@ -344,6 +60,7 @@ export class ProfileService {
    * Get all available profiles
    */
   list(): ComplianceProfile[] {
+    this.ensureInitialized();
     return Array.from(this.profiles.values());
   }
 
@@ -351,22 +68,40 @@ export class ProfileService {
    * Get active profiles based on configuration
    */
   getActive(): ComplianceProfile[] {
+    this.ensureInitialized();
     return this.config.profiles
       .map((id) => this.profiles.get(id))
       .filter((p): p is ComplianceProfile => p !== undefined);
   }
 
   /**
+   * Get active profile IDs
+   */
+  getActiveIds(): string[] {
+    return this.config.profiles;
+  }
+
+  /**
    * Get a specific profile by ID
    */
   get(id: string): ComplianceProfile | undefined {
+    this.ensureInitialized();
     return this.profiles.get(id);
   }
 
   /**
-   * Add a custom profile
+   * Check if a profile exists
+   */
+  has(id: string): boolean {
+    this.ensureInitialized();
+    return this.profiles.has(id);
+  }
+
+  /**
+   * Add a custom profile (runtime only)
    */
   add(profile: ComplianceProfile): void {
+    this.ensureInitialized();
     this.profiles.set(profile.id, profile);
   }
 
@@ -377,7 +112,7 @@ export class ProfileService {
     profileId: string,
     riskLevel: string
   ): ControlDefinition[] {
-    const profile = this.profiles.get(profileId);
+    const profile = this.get(profileId);
     if (!profile) return [];
 
     return profile.controls.filter((c) =>
@@ -392,7 +127,7 @@ export class ProfileService {
     profileId: string,
     riskLevel: string
   ): ArtifactTemplate[] {
-    const profile = this.profiles.get(profileId);
+    const profile = this.get(profileId);
     if (!profile) return [];
 
     return profile.artifactTemplates.filter((t) =>
@@ -401,9 +136,57 @@ export class ProfileService {
   }
 
   /**
+   * Map AIGRC risk level to profile-specific risk level
+   */
+  mapRiskLevel(profileId: string, aigrcLevel: string): string {
+    const profile = this.get(profileId);
+    if (!profile) return aigrcLevel;
+
+    // Use explicit mapping if available
+    if (profile.riskLevelMapping && profile.riskLevelMapping[aigrcLevel]) {
+      return profile.riskLevelMapping[aigrcLevel];
+    }
+
+    // Default: return same level if it exists in profile
+    if (profile.riskLevels.includes(aigrcLevel)) {
+      return aigrcLevel;
+    }
+
+    // Fallback mappings for common cases
+    const fallbackMappings: Record<string, Record<string, string>> = {
+      "us-omb-m24": {
+        minimal: "neither",
+        limited: "neither",
+        high: "rights-impacting",
+        unacceptable: "safety-impacting",
+      },
+      "nist-ai-rmf": {
+        minimal: "minimal",
+        limited: "low",
+        high: "high",
+        unacceptable: "critical",
+      },
+      "iso-42001": {
+        minimal: "low",
+        limited: "medium",
+        high: "high",
+        unacceptable: "critical",
+      },
+    };
+
+    const profileMapping = fallbackMappings[profileId];
+    if (profileMapping && profileMapping[aigrcLevel]) {
+      return profileMapping[aigrcLevel];
+    }
+
+    return aigrcLevel;
+  }
+
+  /**
    * Format profiles list as markdown
    */
   formatProfilesList(): string {
+    this.ensureInitialized();
     const lines: string[] = [];
     lines.push("## Available Compliance Profiles\n");
     lines.push("| ID | Name | Jurisdiction | Version | Active |");
@@ -437,6 +220,15 @@ export class ProfileService {
     lines.push("\n### Risk Levels\n");
     lines.push(profile.riskLevels.map((l) => `- ${l}`).join("\n"));
 
+    if (profile.riskLevelMapping) {
+      lines.push("\n### Risk Level Mapping (AIGRC → Profile)\n");
+      lines.push("| AIGRC Level | Profile Level |");
+      lines.push("|-------------|---------------|");
+      for (const [from, to] of Object.entries(profile.riskLevelMapping)) {
+        lines.push(`| ${from} | ${to} |`);
+      }
+    }
+
     lines.push("\n### Controls\n");
     lines.push("| ID | Name | Category | Required |");
     lines.push("|----|------|----------|----------|");
@@ -451,6 +243,13 @@ export class ProfileService {
       lines.push(`- **${template.name}** (${template.format})`);
       lines.push(`  - ${template.description}`);
       lines.push(`  - Required for: ${template.requiredFor.join(", ")}`);
+    }
+
+    if (profile.trustworthinessCharacteristics) {
+      lines.push("\n### Trustworthiness Characteristics\n");
+      lines.push(
+        profile.trustworthinessCharacteristics.map((c) => `- ${c}`).join("\n")
+      );
     }
 
     return lines.join("\n");

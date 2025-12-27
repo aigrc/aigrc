@@ -1,4 +1,9 @@
-import { AssetCardSchema, type AssetCard } from "./schemas";
+import {
+  AssetCardSchema,
+  type AssetCard,
+  type JurisdictionClassification,
+  type Trustworthiness,
+} from "./schemas";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { dirname } from "path";
 import YAML from "yaml";
@@ -25,6 +30,10 @@ export interface CreateAssetCardOptions {
     piiProcessing?: "yes" | "no" | "unknown";
     highStakesDecisions?: boolean;
   };
+  /** Jurisdiction/profile IDs to track compliance against */
+  jurisdictions?: string[];
+  /** Initial trustworthiness characteristics */
+  trustworthiness?: Partial<Trustworthiness>;
 }
 
 export function generateAssetId(): string {
@@ -36,6 +45,17 @@ export function generateAssetId(): string {
 export function createAssetCard(options: CreateAssetCardOptions): AssetCard {
   const now = new Date().toISOString();
   const id = generateAssetId();
+
+  // Initialize jurisdiction tracking if specified
+  const jurisdictions: JurisdictionClassification[] | undefined =
+    options.jurisdictions && options.jurisdictions.length > 0
+      ? options.jurisdictions.map((jurisdictionId) => ({
+          jurisdictionId,
+          riskLevel: "minimal", // Will be updated by classify
+          controlStatuses: [],
+          requiredArtifacts: [],
+        }))
+      : undefined;
 
   const card: AssetCard = {
     $schema: "https://aigrc.dev/schemas/asset-card/v1",
@@ -64,6 +84,8 @@ export function createAssetCard(options: CreateAssetCardOptions): AssetCard {
         piiProcessing: options.riskFactors?.piiProcessing ?? "unknown",
         highStakesDecisions: options.riskFactors?.highStakesDecisions ?? false,
       },
+      jurisdictions,
+      trustworthiness: options.trustworthiness,
     },
     intent: {
       linked: false,
@@ -80,6 +102,77 @@ export function createAssetCard(options: CreateAssetCardOptions): AssetCard {
   }
 
   return result.data;
+}
+
+/**
+ * Add or update jurisdiction tracking on an existing asset card
+ */
+export function addJurisdiction(
+  card: AssetCard,
+  jurisdictionId: string,
+  riskLevel?: string
+): AssetCard {
+  const jurisdictions = card.classification.jurisdictions || [];
+
+  // Check if jurisdiction already exists
+  const existing = jurisdictions.find((j) => j.jurisdictionId === jurisdictionId);
+  if (existing) {
+    if (riskLevel) {
+      existing.riskLevel = riskLevel;
+    }
+  } else {
+    jurisdictions.push({
+      jurisdictionId,
+      riskLevel: riskLevel || "minimal",
+      controlStatuses: [],
+      requiredArtifacts: [],
+    });
+  }
+
+  return {
+    ...card,
+    classification: {
+      ...card.classification,
+      jurisdictions,
+    },
+  };
+}
+
+/**
+ * Update jurisdiction classification with compliance check results
+ */
+export function updateJurisdictionCompliance(
+  card: AssetCard,
+  jurisdictionId: string,
+  update: Partial<JurisdictionClassification>
+): AssetCard {
+  const jurisdictions = card.classification.jurisdictions || [];
+  const idx = jurisdictions.findIndex((j) => j.jurisdictionId === jurisdictionId);
+
+  if (idx === -1) {
+    // Add new jurisdiction
+    jurisdictions.push({
+      jurisdictionId,
+      riskLevel: update.riskLevel || "minimal",
+      ...update,
+      lastChecked: new Date().toISOString(),
+    });
+  } else {
+    // Update existing
+    jurisdictions[idx] = {
+      ...jurisdictions[idx],
+      ...update,
+      lastChecked: new Date().toISOString(),
+    };
+  }
+
+  return {
+    ...card,
+    classification: {
+      ...card.classification,
+      jurisdictions,
+    },
+  };
 }
 
 export function loadAssetCard(filePath: string): AssetCard {

@@ -50,18 +50,98 @@ export const RiskFactorsSchema = z.object({
 export type RiskFactors = z.infer<typeof RiskFactorsSchema>;
 
 // ─────────────────────────────────────────────────────────────────
+// JURISDICTION CLASSIFICATION SCHEMA
+// ─────────────────────────────────────────────────────────────────
+
+export const ControlStatusSchema = z.object({
+  controlId: z.string(),
+  status: z.enum(["implemented", "partial", "not_implemented", "not_applicable"]),
+  evidence: z.string().optional(),
+  notes: z.string().optional(),
+  lastUpdated: z.string().datetime().optional(),
+});
+
+export type ControlStatus = z.infer<typeof ControlStatusSchema>;
+
+export const JurisdictionClassificationSchema = z.object({
+  /** Profile/jurisdiction ID (e.g., "eu-ai-act", "us-omb-m24") */
+  jurisdictionId: z.string(),
+  /** Risk level mapped to this jurisdiction's terminology */
+  riskLevel: z.string(),
+  /** Jurisdiction-specific category (e.g., EU AI Act category) */
+  category: z.string().optional(),
+  /** Status of controls for this jurisdiction */
+  controlStatuses: z.array(ControlStatusSchema).optional(),
+  /** Required artifacts for this jurisdiction */
+  requiredArtifacts: z
+    .array(
+      z.object({
+        artifactId: z.string(),
+        status: z.enum(["pending", "complete", "not_applicable"]),
+        path: z.string().optional(),
+      })
+    )
+    .optional(),
+  /** Last compliance check date */
+  lastChecked: z.string().datetime().optional(),
+  /** Compliance percentage for this jurisdiction */
+  compliancePercentage: z.number().min(0).max(100).optional(),
+});
+
+export type JurisdictionClassification = z.infer<typeof JurisdictionClassificationSchema>;
+
+// ─────────────────────────────────────────────────────────────────
+// TRUSTWORTHINESS CHARACTERISTICS SCHEMA (NIST AI RMF)
+// ─────────────────────────────────────────────────────────────────
+
+export const TrustworthinessCharacteristicSchema = z.object({
+  score: z.number().min(0).max(100).optional(),
+  notes: z.string().optional(),
+  lastAssessed: z.string().datetime().optional(),
+  assessedBy: z.string().optional(),
+});
+
+export type TrustworthinessCharacteristic = z.infer<typeof TrustworthinessCharacteristicSchema>;
+
+export const TrustworthinessSchema = z.object({
+  /** Valid and reliable: produces accurate, consistent results */
+  valid: TrustworthinessCharacteristicSchema.optional(),
+  reliable: TrustworthinessCharacteristicSchema.optional(),
+  /** Safe: minimizes harm and risk */
+  safe: TrustworthinessCharacteristicSchema.optional(),
+  /** Secure: protected against threats */
+  secure: TrustworthinessCharacteristicSchema.optional(),
+  /** Accountable: clear responsibility and oversight */
+  accountable: TrustworthinessCharacteristicSchema.optional(),
+  /** Transparent: understandable and open about limitations */
+  transparent: TrustworthinessCharacteristicSchema.optional(),
+  /** Explainable: decisions can be understood */
+  explainable: TrustworthinessCharacteristicSchema.optional(),
+  /** Privacy-enhanced: protects personal information */
+  privacyEnhanced: TrustworthinessCharacteristicSchema.optional(),
+  /** Fair: avoids bias and discrimination */
+  fair: TrustworthinessCharacteristicSchema.optional(),
+});
+
+export type Trustworthiness = z.infer<typeof TrustworthinessSchema>;
+
+// ─────────────────────────────────────────────────────────────────
 // CLASSIFICATION SCHEMA
 // ─────────────────────────────────────────────────────────────────
 
 export const ClassificationSchema = z.object({
+  /** Primary AIGRC risk level */
   riskLevel: z.enum(["minimal", "limited", "high", "unacceptable"]),
+  /** Risk factors that influenced the classification */
   riskFactors: RiskFactorsSchema,
+  /** EU AI Act specific classification (legacy, prefer jurisdictions) */
   euAiAct: z
     .object({
       category: z.string(),
       transparencyRequired: z.boolean().default(false),
     })
     .optional(),
+  /** Required artifacts based on classification */
   requiredArtifacts: z
     .array(
       z.object({
@@ -71,6 +151,10 @@ export const ClassificationSchema = z.object({
       })
     )
     .optional(),
+  /** Per-jurisdiction classifications for multi-jurisdiction compliance */
+  jurisdictions: z.array(JurisdictionClassificationSchema).optional(),
+  /** NIST AI RMF trustworthiness characteristics */
+  trustworthiness: TrustworthinessSchema.optional(),
 });
 
 export type Classification = z.infer<typeof ClassificationSchema>;

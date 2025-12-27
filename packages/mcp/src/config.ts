@@ -18,6 +18,12 @@ export const AIGRCConfigSchema = z.object({
   // Compliance profiles
   profiles: z.array(z.string()).default(["eu-ai-act"]),
 
+  // Custom profile paths (files or directories containing YAML profiles)
+  customProfilePaths: z.array(z.string()).default([]),
+
+  // Enable profile stacking (combine multiple profiles with strictest-wins)
+  stackProfiles: z.boolean().default(false),
+
   // Red team integration
   redTeamEnabled: z.boolean().default(false),
   aigosApiUrl: z.string().optional(),
@@ -31,6 +37,7 @@ export type AIGRCConfig = z.infer<typeof AIGRCConfigSchema>;
  */
 export function loadConfig(): AIGRCConfig {
   const profilesRaw = process.env.AIGRC_PROFILES || "eu-ai-act";
+  const customPathsRaw = process.env.AIGRC_CUSTOM_PROFILE_PATHS || "";
 
   return AIGRCConfigSchema.parse({
     workspace: process.env.AIGRC_WORKSPACE || ".",
@@ -38,6 +45,10 @@ export function loadConfig(): AIGRCConfig {
     logLevel: process.env.AIGRC_LOG_LEVEL || "info",
     cacheTtl: parseInt(process.env.AIGRC_CACHE_TTL || "300", 10),
     profiles: profilesRaw.split(",").map((p) => p.trim()),
+    customProfilePaths: customPathsRaw
+      ? customPathsRaw.split(",").map((p) => p.trim())
+      : [],
+    stackProfiles: process.env.AIGRC_STACK_PROFILES === "true",
     redTeamEnabled: process.env.AIGRC_REDTEAM_ENABLED === "true",
     aigosApiUrl: process.env.AIGOS_API_URL,
     aigosApiKey: process.env.AIGOS_API_KEY,
