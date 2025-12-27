@@ -2,6 +2,35 @@
   "name": "@aigrc/core",
   "version": "0.1.0",
   "description": "Core logic for AIGRC - schemas, validation, risk classification",
+  "license": "Apache-2.0",
+  "author": "AIGRC <contact@aigrc.dev>",
+  "homepage": "https://github.com/aigrc/aigrc#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aigrc/aigrc.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/aigrc/aigrc/issues"
+  },
+  "keywords": [
+    "aigrc",
+    "ai-governance",
+    "risk-management",
+    "compliance",
+    "eu-ai-act",
+    "nist-ai-rmf",
+    "iso-42001",
+    "schemas",
+    "validation",
+    "zod"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",

@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 import { program } from "commander";
 import { scanCommand } from "../commands/scan.js";
 import { initCommand } from "../commands/init.js";

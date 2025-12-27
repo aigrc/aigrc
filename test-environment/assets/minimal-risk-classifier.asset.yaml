@@ -1,0 +1,42 @@
+# Minimal-Risk AI Classifier Asset Card
+# Use case: Internal document classifier with no customer impact
+
+$schema: https://aigrc.dev/schemas/asset-card/v1
+id: aigrc-2024-c3d4e5f6
+name: Document Classifier
+description: Classifies internal documents into categories for archival purposes
+version: "1.0.0"
+created: "2024-12-01T00:00:00Z"
+updated: "2024-12-27T00:00:00Z"
+
+ownership:
+  owner:
+    name: Alice Johnson
+    email: alice.johnson@example.com
+    team: Data Engineering
+  team: Data Engineering
+
+technical:
+  type: model
+  framework: pytorch
+  components:
+    - type: model
+      provider: internal
+      model: doc-classifier-v1
+
+classification:
+  riskLevel: minimal
+  riskFactors:
+    autonomousDecisions: false
+    customerFacing: false
+    toolExecution: false
+    externalDataAccess: false
+    piiProcessing: "no"
+    highStakesDecisions: false
+
+intent:
+  linked: false
+
+governance:
+  status: draft
+  approvals: []

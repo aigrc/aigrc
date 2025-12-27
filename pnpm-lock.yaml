@@ -33,7 +33,7 @@ importers:
   packages/cli:
     dependencies:
       '@aigrc/core':
-        specifier: workspace:*
+        specifier: ^0.1.0
         version: link:../core
       chalk:
         specifier: ^5.3.0
@@ -120,7 +120,7 @@ importers:
   packages/mcp:
     dependencies:
       '@aigrc/core':
-        specifier: workspace:*
+        specifier: ^0.1.0
         version: link:../core
       '@modelcontextprotocol/sdk':
         specifier: ^1.0.0

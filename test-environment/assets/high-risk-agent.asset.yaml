@@ -1,0 +1,69 @@
+# High-Risk AI Agent Asset Card
+# Use case: Autonomous customer support agent with tool access
+
+$schema: https://aigrc.dev/schemas/asset-card/v1
+id: aigrc-2024-a1b2c3d4
+name: Customer Support AI Agent
+description: Autonomous AI agent that handles customer inquiries and processes refunds
+version: "1.0.0"
+created: "2024-12-01T00:00:00Z"
+updated: "2024-12-27T00:00:00Z"
+
+ownership:
+  owner:
+    name: Jane Smith
+    email: jane.smith@example.com
+    team: Customer Experience
+  team: Customer Experience
+
+technical:
+  type: agent
+  framework: langchain
+  components:
+    - type: llm
+      provider: openai
+      model: gpt-4
+    - type: tool
+      provider: internal
+      model: refund-api
+
+classification:
+  riskLevel: high
+  riskFactors:
+    autonomousDecisions: true
+    customerFacing: true
+    toolExecution: true
+    externalDataAccess: true
+    piiProcessing: "yes"
+    highStakesDecisions: true
+
+intent:
+  linked: true
+  businessJustification: Reduce customer support costs by 40% while maintaining satisfaction
+  expectedOutcomes:
+    - Handle 80% of tier-1 support tickets autonomously
+    - Reduce average resolution time from 24h to 2h
+  stakeholders:
+    - name: VP Customer Success
+      role: sponsor
+    - name: Legal Team
+      role: reviewer
+
+constraints:
+  humanApprovalRequired:
+    - Refunds over $500
+    - Account modifications
+    - Escalations to legal
+  monitoring:
+    logAllDecisions: true
+    alertThresholds:
+      errorRate: 0.05
+      latencyP99Ms: 5000
+
+governance:
+  status: approved
+  approvals:
+    - role: Legal Reviewer
+      name: Sarah Johnson
+      email: sarah.johnson@example.com
+      date: "2024-12-15T00:00:00Z"

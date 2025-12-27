@@ -1,0 +1,48 @@
+# Limited-Risk AI Chatbot Asset Card
+# Use case: FAQ chatbot with no decision-making authority
+
+$schema: https://aigrc.dev/schemas/asset-card/v1
+id: aigrc-2024-b2c3d4e5
+name: FAQ Chatbot
+description: Simple FAQ chatbot that answers common questions about products
+version: "1.0.0"
+created: "2024-12-01T00:00:00Z"
+updated: "2024-12-27T00:00:00Z"
+
+ownership:
+  owner:
+    name: Bob Wilson
+    email: bob.wilson@example.com
+    team: Marketing
+  team: Marketing
+
+technical:
+  type: api_client
+  framework: openai
+  components:
+    - type: llm
+      provider: openai
+      model: gpt-3.5-turbo
+
+classification:
+  riskLevel: limited
+  riskFactors:
+    autonomousDecisions: false
+    customerFacing: true
+    toolExecution: false
+    externalDataAccess: false
+    piiProcessing: "no"
+    highStakesDecisions: false
+
+intent:
+  linked: true
+  businessJustification: Provide 24/7 FAQ support to reduce support ticket volume
+  expectedOutcomes:
+    - Answer 70% of FAQ queries correctly
+
+governance:
+  status: approved
+  approvals:
+    - role: Marketing Lead
+      name: Lisa Chen
+      date: "2024-11-01T00:00:00Z"

@@ -2,20 +2,51 @@
   "name": "@aigrc/mcp",
   "version": "2.0.0",
   "description": "AIGRC MCP Server - AI Governance via Model Context Protocol",
+  "license": "Apache-2.0",
+  "author": "AIGRC <contact@aigrc.dev>",
+  "homepage": "https://github.com/aigrc/aigrc#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aigrc/aigrc.git",
+    "directory": "packages/mcp"
+  },
+  "bugs": {
+    "url": "https://github.com/aigrc/aigrc/issues"
+  },
+  "keywords": [
+    "aigrc",
+    "mcp",
+    "model-context-protocol",
+    "ai-governance",
+    "compliance",
+    "eu-ai-act",
+    "nist-ai-rmf",
+    "iso-42001",
+    "claude",
+    "anthropic"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
   "main": "dist/index.js",
-  "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "bin": {
     "aigrc-mcp": "./dist/bin/aigrc-mcp.js"
   },
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "profiles"
   ],
   "scripts": {
     "build": "tsup",
@@ -24,19 +55,8 @@
     "clean": "rimraf dist",
     "start": "node dist/bin/aigrc-mcp.js"
   },
-  "keywords": [
-    "aigrc",
-    "mcp",
-    "model-context-protocol",
-    "ai-governance",
-    "compliance",
-    "eu-ai-act"
-  ],
-  "author": "AIGRC",
-  "license": "MIT",
-  "type": "module",
   "dependencies": {
-    "@aigrc/core": "workspace:*",
+    "@aigrc/core": "^0.1.0",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "glob": "^10.3.10",
     "yaml": "^2.3.4",
@@ -47,8 +67,5 @@
     "rimraf": "^5.0.5",
     "tsup": "^8.0.1",
     "typescript": "^5.3.2"
-  },
-  "engines": {
-    "node": ">=18.0.0"
   }
 }

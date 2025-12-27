@@ -1,0 +1,42 @@
+# Unacceptable-Risk AI System Asset Card
+# Use case: Biometric identification in public spaces (PROHIBITED)
+
+$schema: https://aigrc.dev/schemas/asset-card/v1
+id: aigrc-2024-d4e5f6a7
+name: Public Biometric Scanner
+description: Real-time facial recognition for public space surveillance (PROHIBITED)
+version: "1.0.0"
+created: "2024-12-01T00:00:00Z"
+updated: "2024-12-27T00:00:00Z"
+
+ownership:
+  owner:
+    name: Security Corp
+    email: security@example.com
+    team: Security
+  team: Security
+
+technical:
+  type: model
+  framework: tensorflow
+  components:
+    - type: model
+      provider: internal
+      model: facial-recognition-v2
+
+classification:
+  riskLevel: unacceptable
+  riskFactors:
+    autonomousDecisions: true
+    customerFacing: true
+    toolExecution: true
+    externalDataAccess: true
+    piiProcessing: "yes"
+    highStakesDecisions: true
+
+intent:
+  linked: false
+
+governance:
+  status: draft
+  approvals: []
