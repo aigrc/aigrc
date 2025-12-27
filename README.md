@@ -193,7 +193,7 @@ pnpm run typecheck
 
 ## License
 
-MIT
+Apache 2.0
 
 ## Links
 
