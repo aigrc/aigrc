@@ -2,7 +2,7 @@
 Shift Left Governance for the Agentic AI age.
 Developed by: S.Maitland Davies
 
-Developed by S.Maitland Davies and input from Claude Opus 4.5
+Developed by S.Maitland Davies with support from Claude Opus 4.5
 
 A comprehensive toolkit for managing AI governance in your codebase. Detect AI/ML frameworks, register assets, classify risk levels, and ensure compliance with regulations like the EU AI Act.
 
