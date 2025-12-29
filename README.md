@@ -1,4 +1,5 @@
 # AIGRC - AI Governance, Risk, Compliance
+Developed by S.Maitland Davies
 
 A comprehensive toolkit for managing AI governance in your codebase. Detect AI/ML frameworks, register assets, classify risk levels, and ensure compliance with regulations like the EU AI Act.
 
