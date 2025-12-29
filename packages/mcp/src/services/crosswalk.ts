@@ -143,8 +143,8 @@ export class CrosswalkService {
     const conflicts = this.findConflicts(classifications);
 
     return {
-      assetId: card.metadata.id || card.metadata.name,
-      assetName: card.metadata.name,
+      assetId: card.id || card.name,
+      assetName: card.name,
       classifications,
       equivalences,
       conflicts,
@@ -287,12 +287,12 @@ export class CrosswalkService {
 
   private getCategory(card: AssetCard, profileId: string): string | undefined {
     if (profileId === "eu-ai-act") {
-      return card.classification.euAiActCategory;
+      return card.classification?.euAiAct?.category;
     }
 
     // US categories
     if (profileId === "us-omb-m24") {
-      if (card.riskFactors.highStakesDecisions) {
+      if (card.classification?.riskFactors?.highStakesDecisions) {
         return "Rights-impacting use";
       }
       return undefined;

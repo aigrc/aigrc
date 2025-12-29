@@ -222,7 +222,7 @@ export class ComplianceService {
     }
 
     return {
-      assetId: card.metadata.id || card.metadata.name,
+      assetId: card.id || card.name,
       profiles: profileGaps,
       priority: maxSeverity,
       estimatedEffort: this.estimateEffort(profileGaps),
@@ -359,8 +359,8 @@ export class ComplianceService {
     card: AssetCard,
     control: ControlDefinition
   ): { status: ControlStatus["status"]; evidence?: string; notes?: string } {
-    // Check if control is documented in goldenThread
-    const goldenThread = card.goldenThread || {};
+    // Check if control is documented in intent/governance
+    const intent = card.intent || {};
 
     // Simple heuristic: check if there's evidence in goldenThread
     // In a real implementation, this would check specific fields
@@ -380,22 +380,23 @@ export class ComplianceService {
     };
 
     const expectedFields = categoryMapping[control.category] || [];
+    const intentRecord = intent as Record<string, unknown>;
     const hasEvidence = expectedFields.some((field) => {
-      const value = goldenThread[field];
+      const value = intentRecord[field];
       return value !== undefined && value !== null;
     });
 
     if (hasEvidence) {
       return {
         status: "implemented",
-        evidence: expectedFields.find((f) => goldenThread[f])?.toString(),
-        notes: "Evidence found in golden thread",
+        evidence: expectedFields.find((f) => intentRecord[f])?.toString(),
+        notes: "Evidence found in intent",
       };
     }
 
     // Check if partially implemented
     const hasPartialEvidence = expectedFields.some((field) => {
-      const value = goldenThread[field];
+      const value = intentRecord[field];
       return typeof value === "object" && value !== null;
     });
 
@@ -417,11 +418,11 @@ export class ComplianceService {
     required: ArtifactTemplate[]
   ): string[] {
     const missing: string[] = [];
-    const goldenThread = card.goldenThread || {};
+    const intentData = (card.intent || {}) as Record<string, unknown>;
 
     for (const template of required) {
-      // Check if artifact is referenced in goldenThread
-      const hasArtifact = Object.keys(goldenThread).some((key) =>
+      // Check if artifact is referenced in intent
+      const hasArtifact = Object.keys(intentData).some((key) =>
         key.toLowerCase().includes(template.id.toLowerCase().replace(/-/g, ""))
       );
 

@@ -1,0 +1,7 @@
+profiles:
+  - eu-ai-act
+  - us-omb-m24
+  - nist-ai-rmf
+  - iso-42001
+outputDir: .aigrc
+stackProfiles: true

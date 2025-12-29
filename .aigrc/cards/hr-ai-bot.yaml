@@ -1,0 +1,30 @@
+$schema: https://aigrc.dev/schemas/asset-card/v1
+id: aigrc-2025-e90553a3
+name: HR AI Bot
+description: Human Resources AI Bot for Internal Employees
+version: 1.0.0
+created: 2025-12-28T01:49:31.093Z
+updated: 2025-12-28T01:49:31.107Z
+ownership:
+  owner:
+    name: John Doe
+    email: jdoe@bigcompany.com
+    team: HR Dev Team
+  team: HR Dev Team
+technical:
+  type: api_client
+  framework: openai
+classification:
+  riskLevel: minimal
+  riskFactors:
+    autonomousDecisions: true
+    customerFacing: false
+    toolExecution: true
+    externalDataAccess: true
+    piiProcessing: yes
+    highStakesDecisions: true
+intent:
+  linked: false
+governance:
+  status: draft
+  approvals: []

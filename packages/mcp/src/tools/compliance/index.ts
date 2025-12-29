@@ -181,7 +181,7 @@ export async function executeComplianceTools(
 
       // Check all active profiles
       const statuses = services.compliance.checkAllProfiles(card);
-      let output = `## Compliance Status: ${card.metadata.name}\n\n`;
+      let output = `## Compliance Status: ${card.name}\n\n`;
       output += "| Profile | Compliant | Percentage | Gaps |\n";
       output += "|---------|-----------|------------|------|\n";
 

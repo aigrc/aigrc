@@ -53,12 +53,12 @@ node ../packages/cli/dist/aigrc.js --version
 
 The `assets/` directory contains four test asset cards:
 
-| Asset File | Risk Level | Use Case |
-|------------|------------|----------|
-| `high-risk-agent.asset.yaml` | High | Autonomous customer support agent |
-| `limited-risk-chatbot.asset.yaml` | Limited | FAQ chatbot |
-| `minimal-risk-classifier.asset.yaml` | Minimal | Internal document classifier |
-| `unacceptable-risk-biometric.asset.yaml` | Unacceptable | Prohibited biometric system |
+| Asset File                               | Risk Level   | Use Case                          |
+| ---------------------------------------- | ------------ | --------------------------------- |
+| `high-risk-agent.asset.yaml`             | High         | Autonomous customer support agent |
+| `limited-risk-chatbot.asset.yaml`        | Limited      | FAQ chatbot                       |
+| `minimal-risk-classifier.asset.yaml`     | Minimal      | Internal document classifier      |
+| `unacceptable-risk-biometric.asset.yaml` | Unacceptable | Prohibited biometric system       |
 
 ---
 
@@ -494,22 +494,25 @@ rm .aigrc.yaml
 
 Use this checklist to track test progress:
 
-- [ ] **Environment Setup**
-  - [ ] pnpm install succeeds
-  - [ ] pnpm build succeeds
-  - [ ] CLI --version works
+- [x] **Environment Setup**
+  
+  - [x] pnpm install succeeds
+  - [x] pnpm build succeeds
+  - [x] CLI --version works
 
-- [ ] **Core Commands**
-  - [ ] scan command runs
-  - [ ] init creates config
-  - [ ] validate works for valid YAML
-  - [ ] validate catches invalid YAML
-  - [ ] status shows asset info
-  - [ ] register creates new asset
+- [x] **Core Commands**
+  
+  - [x] scan command runs
+  - [x] init creates config
+  - [x] validate works for valid YAML
+  - [x] validate catches invalid YAML
+  - [x] status shows asset info
+  - [x] register creates new asset
 
-- [ ] **Multi-Jurisdiction Commands**
-  - [ ] compliance list shows profiles
-  - [ ] compliance show displays profile details
+- [x] **Multi-Jurisdiction Commands**
+  
+  - [x] compliance list shows profiles
+  - [x] compliance show displays profile details
   - [ ] classify maps risk levels correctly
   - [ ] check shows control status
   - [ ] check --stack combines profiles
@@ -519,11 +522,13 @@ Use this checklist to track test progress:
   - [ ] report audit creates full report
 
 - [ ] **Output Formats**
+  
   - [ ] --output json produces valid JSON
   - [ ] --output yaml produces valid YAML
   - [ ] --verbose shows additional detail
 
 - [ ] **Error Handling**
+  
   - [ ] Missing file handled gracefully
   - [ ] Invalid YAML shows error
   - [ ] Unknown profile listed alternatives

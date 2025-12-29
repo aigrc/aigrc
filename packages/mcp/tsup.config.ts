@@ -4,6 +4,7 @@ export default defineConfig({
   entry: {
     index: "src/index.ts",
     "bin/aigrc-mcp": "bin/aigrc-mcp.ts",
+    "bin/aigrc-mcp-http": "bin/aigrc-mcp-http.ts",
   },
   format: ["esm"],
   dts: false,
@@ -12,9 +13,6 @@ export default defineConfig({
   clean: true,
   noExternal: ["glob", "@modelcontextprotocol/sdk"],
   external: ["@aigrc/core"],
-  banner: {
-    js: "#!/usr/bin/env node",
-  },
   shims: true,
   target: "node18",
 });

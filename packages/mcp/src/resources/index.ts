@@ -53,18 +53,18 @@ export async function getResources(
   // Add dynamic card resources
   const cards = await services.cards.list();
   for (const card of cards) {
-    const id = card.metadata.id || card.metadata.name;
+    const id = card.id || card.name;
     resources.push({
       uri: `aigrc://cards/${id}`,
-      name: card.metadata.name,
-      description: `Asset card: ${card.metadata.description || card.technical.type}`,
+      name: card.name,
+      description: `Asset card: ${card.description || card.technical.type}`,
       mimeType: "application/json",
     });
 
     // Add compliance resource for each card
     resources.push({
       uri: `aigrc://compliance/${id}`,
-      name: `Compliance: ${card.metadata.name}`,
+      name: `Compliance: ${card.name}`,
       description: `Compliance status across all profiles`,
       mimeType: "application/json",
     });
@@ -72,7 +72,7 @@ export async function getResources(
     // Add crosswalk resource for each card
     resources.push({
       uri: `aigrc://crosswalk/${id}`,
-      name: `Crosswalk: ${card.metadata.name}`,
+      name: `Crosswalk: ${card.name}`,
       description: `Cross-framework mapping`,
       mimeType: "application/json",
     });
@@ -81,7 +81,7 @@ export async function getResources(
     if (config.redTeamEnabled) {
       resources.push({
         uri: `aigrc://redteam/${id}`,
-        name: `Red Team: ${card.metadata.name}`,
+        name: `Red Team: ${card.name}`,
         description: `Red team status and findings`,
         mimeType: "application/json",
       });
@@ -138,11 +138,11 @@ export async function readResource(
             mimeType: "application/json",
             text: JSON.stringify(
               cards.map((c) => ({
-                id: c.metadata.id || c.metadata.name,
-                name: c.metadata.name,
+                id: c.id || c.name,
+                name: c.name,
                 type: c.technical.type,
                 framework: c.technical.framework,
-                riskLevel: c.classification.riskLevel,
+                riskLevel: c.classification?.riskLevel,
               })),
               null,
               2

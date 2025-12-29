@@ -13,6 +13,9 @@ import { ComplianceService } from "./compliance.js";
 import { CrosswalkService } from "./crosswalk.js";
 import { RedTeamService } from "./redteam.js";
 import { ReportsService } from "./reports.js";
+import { CheckpointService, createCheckpointService } from "./checkpoint.js";
+import { PolicyService, createPolicyService } from "./policy.js";
+import { GoldenThreadService, createGoldenThreadService } from "./golden-thread.js";
 
 export interface Services {
   scanner: ScannerService;
@@ -23,6 +26,9 @@ export interface Services {
   crosswalk: CrosswalkService;
   redTeam: RedTeamService;
   reports: ReportsService;
+  checkpoint: CheckpointService;
+  policy: PolicyService;
+  goldenThread: GoldenThreadService;
 }
 
 /**
@@ -37,8 +43,13 @@ export function createServices(config: AIGRCConfig): Services {
   const crosswalk = new CrosswalkService(config, profiles);
   const redTeam = new RedTeamService(config);
   const reports = new ReportsService(config, cards, compliance, redTeam);
+  const policy = createPolicyService(config);
 
-  return {
+  // Create golden thread service
+  const goldenThread = createGoldenThreadService(config, cards);
+
+  // Services that need access to other services
+  const baseServices: Omit<Services, "checkpoint"> = {
     scanner,
     cards,
     classify,
@@ -47,6 +58,16 @@ export function createServices(config: AIGRCConfig): Services {
     crosswalk,
     redTeam,
     reports,
+    policy,
+    goldenThread,
+  };
+
+  // Create checkpoint service with reference to other services
+  const checkpoint = createCheckpointService(baseServices as Services, config);
+
+  return {
+    ...baseServices,
+    checkpoint,
   };
 }
 
@@ -59,3 +80,6 @@ export { ComplianceService } from "./compliance.js";
 export { CrosswalkService } from "./crosswalk.js";
 export { RedTeamService } from "./redteam.js";
 export { ReportsService } from "./reports.js";
+export { CheckpointService, createCheckpointService } from "./checkpoint.js";
+export { PolicyService, createPolicyService } from "./policy.js";
+export { GoldenThreadService, createGoldenThreadService } from "./golden-thread.js";

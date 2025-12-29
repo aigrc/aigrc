@@ -1,0 +1,31 @@
+$schema: https://aigrc.dev/schemas/asset-card/v1
+id: aigrc-2025-7297f437
+name: cd test*
+description: AI asset using Legal Patterns, Financial Patterns, Medical/Healthcare Patterns and 24
+  more. Includes autonomous agent capabilities. Integrates with LLM providers. Contains model files.
+version: 1.0.0
+created: 2025-12-28T01:40:40.741Z
+updated: 2025-12-28T01:40:40.757Z
+ownership:
+  owner:
+    name: Chris Doe
+    email: bdwsplunk@gmail.com
+    team: Accounting Dev Team
+  team: Accounting Dev Team
+technical:
+  type: framework
+  framework: Financial Patterns
+classification:
+  riskLevel: minimal
+  riskFactors:
+    autonomousDecisions: true
+    customerFacing: true
+    toolExecution: true
+    externalDataAccess: true
+    piiProcessing: yes
+    highStakesDecisions: true
+intent:
+  linked: false
+governance:
+  status: draft
+  approvals: []

@@ -127,7 +127,7 @@ export class ReportsService {
       let redTeamStatus: RedTeamStatus | undefined;
       if (includeRedTeam) {
         redTeamStatus = await this.redTeamService.getStatus(
-          card.metadata.id || card.metadata.name
+          card.id || card.name
         );
         if (redTeamStatus.findings.critical > 0) {
           criticalIssues.push(
@@ -137,8 +137,8 @@ export class ReportsService {
       }
 
       assetReports.push({
-        assetId: card.metadata.id || card.metadata.name,
-        assetName: card.metadata.name,
+        assetId: card.id || card.name,
+        assetName: card.name,
         riskLevel: card.classification.riskLevel,
         compliance,
         redTeamStatus,
@@ -236,9 +236,9 @@ export class ReportsService {
         controlCoverage.set(control.controlId, existing);
       }
 
-      // Track artifacts
-      const goldenThread = card.goldenThread || {};
-      for (const [key, value] of Object.entries(goldenThread)) {
+      // Track artifacts from intent
+      const intentData = (card.intent || {}) as Record<string, unknown>;
+      for (const [key, value] of Object.entries(intentData)) {
         if (typeof value === "object" && value !== null) {
           const docValue = value as { document?: string; lastUpdated?: string };
           artifacts.push({
@@ -247,18 +247,18 @@ export class ReportsService {
             required: true,
             present: !!docValue.document,
             lastUpdated: docValue.lastUpdated,
-            assetId: card.metadata.id || card.metadata.name,
+            assetId: card.id || card.name,
           });
         }
       }
 
       auditAssets.push({
-        id: card.metadata.id || card.metadata.name,
-        name: card.metadata.name,
+        id: card.id || card.name,
+        name: card.name,
         riskLevel: compliance.riskLevel,
         compliant: compliance.compliant,
         gaps: compliance.gaps,
-        artifacts: Object.keys(goldenThread),
+        artifacts: Object.keys(intentData),
       });
     }
 

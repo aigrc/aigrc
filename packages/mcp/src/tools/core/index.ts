@@ -219,7 +219,7 @@ export async function executeCoreTools(
       const exclude = args.exclude as string[] | undefined;
       const include = args.include as string[] | undefined;
 
-      const result = await services.scanner.scan(directory, { exclude, include });
+      const result = await services.scanner.scan(directory, { ignorePatterns: exclude, extensions: include });
       const formatted = services.scanner.formatScanResults(result);
 
       return {
@@ -303,18 +303,12 @@ export async function executeCoreTools(
         highStakesDecisions: riskFactors.highStakesDecisions || false,
       });
 
-      const card = {
-        metadata: {
-          name: args.name as string,
-          version: "1.0.0",
-          status: "active" as const,
-          owner: args.owner as { name: string; email: string },
-          description: args.description as string | undefined,
-        },
-        technical: {
-          type: args.type as "api_client" | "framework" | "agent" | "model" | "pipeline",
-          framework: args.framework as string,
-        },
+      const createOptions = {
+        name: args.name as string,
+        description: args.description as string | undefined,
+        owner: args.owner as { name: string; email: string },
+        type: args.type as "api_client" | "framework" | "agent" | "model" | "pipeline",
+        framework: args.framework as string | undefined,
         riskFactors: {
           autonomousDecisions: riskFactors.autonomousDecisions || false,
           customerFacing: riskFactors.customerFacing || false,
@@ -323,16 +317,15 @@ export async function executeCoreTools(
           piiProcessing: riskFactors.piiProcessing || ("unknown" as const),
           highStakesDecisions: riskFactors.highStakesDecisions || false,
         },
-        classification,
       };
 
-      const cardId = await services.cards.create(card, directory);
+      const cardId = await services.cards.create(createOptions, directory);
 
       return {
         content: [
           {
             type: "text",
-            text: `## Asset Card Created\n\n**ID:** ${cardId}\n**Risk Level:** ${classification.riskLevel.toUpperCase()}\n**EU AI Act Category:** ${classification.euAiActCategory || "N/A"}\n\nThe asset card has been saved to \`.aigrc/cards/${cardId}.yaml\``,
+            text: `## Asset Card Created\n\n**ID:** ${cardId}\n**Risk Level:** ${classification?.riskLevel?.toUpperCase() || "MINIMAL"}\n**EU AI Act Category:** ${classification?.euAiActCategory || "N/A"}\n\nThe asset card has been saved to \`.aigrc/cards/${cardId}.yaml\``,
           },
         ],
       };

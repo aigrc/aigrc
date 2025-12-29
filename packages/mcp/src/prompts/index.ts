@@ -178,7 +178,7 @@ async function complianceReviewPrompt(
   const statuses = services.compliance.checkAllProfiles(card);
   const crosswalk = services.crosswalk.getCrosswalk(card, profiles);
 
-  let context = `## Asset: ${card.metadata.name}\n\n`;
+  let context = `## Asset: ${card.name}\n\n`;
   context += services.cards.formatCard(card);
   context += "\n\n---\n\n## Compliance Status\n\n";
 
@@ -191,7 +191,7 @@ async function complianceReviewPrompt(
   context += services.crosswalk.formatCrosswalk(crosswalk);
 
   return {
-    description: `Compliance review for ${card.metadata.name}`,
+    description: `Compliance review for ${card.name}`,
     messages: [
       {
         role: "user",
@@ -230,14 +230,22 @@ async function riskAssessmentPrompt(
     throw new Error(`Asset card not found: ${assetId}`);
   }
 
-  const classification = services.classify.classifyMultiJurisdiction(card.riskFactors);
+  const riskFactors = card.classification?.riskFactors || {
+    autonomousDecisions: false,
+    customerFacing: false,
+    toolExecution: false,
+    externalDataAccess: false,
+    piiProcessing: "unknown" as const,
+    highStakesDecisions: false,
+  };
+  const classification = services.classify.classifyMultiJurisdiction(riskFactors);
 
   let context = services.cards.formatCard(card);
   context += "\n\n---\n\n";
-  context += services.classify.formatClassification(classification, card.riskFactors);
+  context += services.classify.formatClassification(classification, riskFactors);
 
   return {
-    description: `Risk assessment for ${card.metadata.name}`,
+    description: `Risk assessment for ${card.name}`,
     messages: [
       {
         role: "user",
@@ -284,7 +292,7 @@ async function gapRemediationPrompt(
   const formattedAnalysis = services.compliance.formatGapAnalysis(analysis);
 
   return {
-    description: `Gap remediation plan for ${card.metadata.name}`,
+    description: `Gap remediation plan for ${card.name}`,
     messages: [
       {
         role: "user",
@@ -399,7 +407,7 @@ async function generateDocumentationPrompt(
   const template = templates[documentType] || templates.risk_management;
 
   return {
-    description: `Generate ${documentType} for ${card.metadata.name}`,
+    description: `Generate ${documentType} for ${card.name}`,
     messages: [
       {
         role: "user",
@@ -444,7 +452,7 @@ async function securityReviewPrompt(
   context += services.redTeam.formatFindings(findings);
 
   return {
-    description: `Security review for ${card.metadata.name}`,
+    description: `Security review for ${card.name}`,
     messages: [
       {
         role: "user",

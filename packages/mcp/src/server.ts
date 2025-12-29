@@ -20,12 +20,19 @@ import { getTools, executeTool } from "./tools/index.js";
 import { getResources, readResource } from "./resources/index.js";
 import { getPrompts, getPrompt } from "./prompts/index.js";
 import { createServices, Services } from "./services/index.js";
+import {
+  TelemetryService,
+  createTelemetryService,
+  createConsoleHook,
+} from "./telemetry.js";
 
 export interface AIGRCServer {
   server: Server;
   config: AIGRCConfig;
   services: Services;
+  telemetry: TelemetryService;
   start: () => Promise<void>;
+  shutdown: () => Promise<void>;
 }
 
 /**
@@ -35,46 +42,82 @@ export function createServer(config?: Partial<AIGRCConfig>): AIGRCServer {
   const fullConfig = { ...loadConfig(), ...config };
   const services = createServices(fullConfig);
 
+  // Initialize telemetry
+  const telemetry = createTelemetryService(fullConfig);
+
+  // Add console hook for debug logging
+  if (fullConfig.logLevel === "debug" || fullConfig.logLevel === "info") {
+    telemetry.addHook(createConsoleHook(fullConfig.logLevel));
+  }
+
   const server = new Server(
     {
       name: "aigrc",
-      version: "2.0.0",
+      version: "3.0.0",
     },
     {
       capabilities: {
-        tools: {},
-        resources: { subscribe: true },
-        prompts: {},
+        tools: { listChanged: true },
+        resources: { subscribe: true, listChanged: true },
+        prompts: { listChanged: true },
+        logging: {},
       },
     }
   );
 
   // Register tool handlers
-  server.setRequestHandler(ListToolsRequestSchema, async () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  server.setRequestHandler(ListToolsRequestSchema, async (): Promise<any> => {
     return { tools: getTools(fullConfig) };
   });
 
-  server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  server.setRequestHandler(CallToolRequestSchema, async (request, _extra): Promise<any> => {
     const { name, arguments: args } = request.params;
-    return executeTool(name, args || {}, services, fullConfig);
+    const startTime = Date.now();
+
+    try {
+      const result = await executeTool(name, args || {}, services, fullConfig);
+      telemetry.record({
+        type: "tool_call",
+        toolName: name,
+        duration: Date.now() - startTime,
+        success: true,
+        metadata: { args: Object.keys(args || {}) },
+      });
+      return result;
+    } catch (error) {
+      telemetry.record({
+        type: "tool_call",
+        toolName: name,
+        duration: Date.now() - startTime,
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
   });
 
   // Register resource handlers
-  server.setRequestHandler(ListResourcesRequestSchema, async () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  server.setRequestHandler(ListResourcesRequestSchema, async (_request, _extra): Promise<any> => {
     return { resources: await getResources(services, fullConfig) };
   });
 
-  server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  server.setRequestHandler(ReadResourceRequestSchema, async (request, _extra): Promise<any> => {
     const { uri } = request.params;
     return readResource(uri, services, fullConfig);
   });
 
   // Register prompt handlers
-  server.setRequestHandler(ListPromptsRequestSchema, async () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  server.setRequestHandler(ListPromptsRequestSchema, async (_request, _extra): Promise<any> => {
     return { prompts: getPrompts(fullConfig) };
   });
 
-  server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  server.setRequestHandler(GetPromptRequestSchema, async (request, _extra): Promise<any> => {
     const { name, arguments: args } = request.params;
     return getPrompt(name, args || {}, services, fullConfig);
   });
@@ -84,17 +127,26 @@ export function createServer(config?: Partial<AIGRCConfig>): AIGRCServer {
     await server.connect(transport);
 
     if (fullConfig.logLevel === "debug" || fullConfig.logLevel === "info") {
-      console.error(`AIGRC MCP Server v2.0.0 started`);
+      console.error(`AIGRC MCP Server v3.0.0 started`);
       console.error(`Workspace: ${fullConfig.workspace}`);
       console.error(`Profiles: ${fullConfig.profiles.join(", ")}`);
       console.error(`Red Team: ${fullConfig.redTeamEnabled ? "enabled" : "disabled"}`);
+      console.error(`Telemetry: ${fullConfig.telemetryEnabled ? "enabled" : "disabled"}`);
+      console.error(`Extensions: Value-First, Checkpoint, Golden Thread, Multi-Jurisdiction`);
     }
+  };
+
+  const shutdown = async () => {
+    await telemetry.shutdown();
+    await server.close();
   };
 
   return {
     server,
     config: fullConfig,
     services,
+    telemetry,
     start,
+    shutdown,
   };
 }

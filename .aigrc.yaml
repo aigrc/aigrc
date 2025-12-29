@@ -1,0 +1,14 @@
+version: "1.0"
+cardsDir: .aigrc/cards
+scan:
+  exclude:
+    - node_modules
+    - .git
+    - dist
+    - build
+    - __pycache__
+    - .venv
+    - venv
+profiles:
+  - eu-ai-act
+  - nist-ai-rmf
