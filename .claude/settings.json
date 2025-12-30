@@ -1,0 +1,71 @@
+{
+  "project": {
+    "name": "AIGOS",
+    "description": "AI Governance Operating System"
+  },
+  "jira": {
+    "host": "aigos.atlassian.net",
+    "projectKey": "AIG",
+    "boardId": 3,
+    "issueTypes": {
+      "epic": "10012",
+      "story": "10011",
+      "task": "10009",
+      "bug": "10010",
+      "subtask": "10013"
+    }
+  },
+  "agents": {
+    "scrum-master": {
+      "name": "Scrum Master Agent",
+      "role": "coordinator",
+      "epics": []
+    },
+    "core-agent": {
+      "name": "Core Agent",
+      "role": "executor",
+      "epics": ["AIG-1", "AIG-2", "AIG-3"],
+      "packages": ["@aigrc/core", "@aigrc/config"]
+    },
+    "runtime-agent": {
+      "name": "Runtime Agent",
+      "role": "executor",
+      "epics": ["AIG-4", "AIG-5", "AIG-6", "AIG-7", "AIG-8"],
+      "packages": ["@aigos/runtime"]
+    },
+    "cli-agent": {
+      "name": "CLI Agent",
+      "role": "executor",
+      "epics": ["AIG-10"],
+      "packages": ["@aigrc/cli"]
+    },
+    "a2a-agent": {
+      "name": "A2A Agent",
+      "role": "executor",
+      "epics": ["AIG-9"],
+      "packages": ["@aigos/runtime/a2a"]
+    },
+    "license-agent": {
+      "name": "License Agent",
+      "role": "executor",
+      "epics": ["AIG-11"],
+      "packages": ["@aigos/license"]
+    },
+    "qa-agent": {
+      "name": "QA Agent",
+      "role": "executor",
+      "epics": ["AIG-12"],
+      "packages": ["tests/"]
+    }
+  },
+  "sprints": {
+    "duration_weeks": 2,
+    "target_points": 50
+  },
+  "git": {
+    "main_branch": "main",
+    "develop_branch": "develop",
+    "branch_prefix": "feature/",
+    "commit_format": "conventional"
+  }
+}

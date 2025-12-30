@@ -9,6 +9,12 @@ import {
   RiskLevelSchema,
   OperatingModeSchema,
   AssetCardRuntimeSchema,
+  PolicyFileSchema,
+  PolicyRuleSchema,
+  PolicyCapabilitiesSchema,
+  AigrcConfigSchema,
+  AigrcRuntimeConfigSchema,
+  AigrcIntegrationsConfigSchema,
 } from "../src/schemas";
 
 describe("Runtime Schemas", () => {
@@ -349,6 +355,257 @@ describe("Runtime Schemas", () => {
       expect(result.policy_path).toBe(".aigrc/policies/default.yaml");
       expect(result.verification_failure_mode).toBe("FAIL");
       expect(result.kill_switch?.channel).toBe("sse");
+    });
+  });
+
+  describe("PolicyRuleSchema", () => {
+    it("should accept minimal rule", () => {
+      const result = PolicyRuleSchema.parse({
+        id: "rule-1",
+        effect: "allow",
+      });
+      expect(result.id).toBe("rule-1");
+      expect(result.effect).toBe("allow");
+      expect(result.actions).toEqual(["*"]);
+      expect(result.resources).toEqual(["*"]);
+      expect(result.priority).toBe(0);
+    });
+
+    it("should accept full rule with conditions", () => {
+      const result = PolicyRuleSchema.parse({
+        id: "high-risk-deny",
+        description: "Deny all actions for high-risk agents",
+        effect: "deny",
+        actions: ["execute_shell", "write_file"],
+        resources: ["/**"],
+        conditions: {
+          risk_levels: ["high", "unacceptable"],
+          modes: ["RESTRICTED"],
+          time_ranges: [{ start: "00:00", end: "06:00" }],
+        },
+        priority: 100,
+      });
+      expect(result.id).toBe("high-risk-deny");
+      expect(result.effect).toBe("deny");
+      expect(result.conditions?.risk_levels).toEqual(["high", "unacceptable"]);
+      expect(result.priority).toBe(100);
+    });
+
+    it("should accept audit effect", () => {
+      const result = PolicyRuleSchema.parse({
+        id: "audit-all",
+        effect: "audit",
+      });
+      expect(result.effect).toBe("audit");
+    });
+
+    it("should reject invalid effect", () => {
+      expect(() => PolicyRuleSchema.parse({
+        id: "rule-1",
+        effect: "invalid",
+      })).toThrow();
+    });
+  });
+
+  describe("PolicyCapabilitiesSchema", () => {
+    it("should accept minimal capabilities", () => {
+      const result = PolicyCapabilitiesSchema.parse({});
+      expect(result.default_effect).toBe("deny");
+      expect(result.allowed_tools).toEqual([]);
+      expect(result.may_spawn).toBe(false);
+    });
+
+    it("should accept full capabilities", () => {
+      const result = PolicyCapabilitiesSchema.parse({
+        default_effect: "allow",
+        allowed_tools: ["read_file", "write_file"],
+        denied_tools: ["execute_shell"],
+        allowed_domains: ["*.example.com"],
+        denied_domains: ["*.evil.com"],
+        max_budget_per_session: 10.0,
+        max_budget_per_day: 100.0,
+        may_spawn: true,
+        max_spawn_depth: 3,
+      });
+      expect(result.default_effect).toBe("allow");
+      expect(result.allowed_tools).toContain("read_file");
+      expect(result.may_spawn).toBe(true);
+      expect(result.max_spawn_depth).toBe(3);
+    });
+  });
+
+  describe("PolicyFileSchema", () => {
+    it("should accept minimal policy", () => {
+      const result = PolicyFileSchema.parse({
+        version: "1.0",
+        id: "default-policy",
+        name: "Default Policy",
+      });
+      expect(result.version).toBe("1.0");
+      expect(result.id).toBe("default-policy");
+      expect(result.applies_to).toEqual(["*"]);
+      expect(result.rules).toEqual([]);
+    });
+
+    it("should accept full policy with inheritance", () => {
+      const result = PolicyFileSchema.parse({
+        version: "1.0",
+        id: "production-policy",
+        name: "Production Policy",
+        description: "Strict policy for production environment",
+        extends: "default-policy",
+        applies_to: ["aigrc-2024-*"],
+        capabilities: {
+          default_effect: "deny",
+          allowed_tools: ["read_file"],
+          max_budget_per_day: 50.0,
+        },
+        rules: [
+          {
+            id: "allow-read",
+            effect: "allow",
+            actions: ["read_file"],
+          },
+        ],
+        metadata: {
+          created_at: "2025-01-15T10:30:00Z",
+          updated_at: "2025-01-15T10:30:00Z",
+          created_by: "admin@corp.com",
+          tags: ["production", "restricted"],
+        },
+      });
+      expect(result.extends).toBe("default-policy");
+      expect(result.capabilities?.default_effect).toBe("deny");
+      expect(result.rules).toHaveLength(1);
+      expect(result.metadata?.tags).toContain("production");
+    });
+
+    it("should reject invalid version", () => {
+      expect(() => PolicyFileSchema.parse({
+        version: "2.0",
+        id: "test",
+        name: "Test",
+      })).toThrow();
+    });
+
+    it("should reject empty id", () => {
+      expect(() => PolicyFileSchema.parse({
+        version: "1.0",
+        id: "",
+        name: "Test",
+      })).toThrow();
+    });
+  });
+
+  describe("AigrcRuntimeConfigSchema", () => {
+    it("should accept minimal config", () => {
+      const result = AigrcRuntimeConfigSchema.parse({});
+      expect(result.policy_paths).toEqual([".aigrc/policies"]);
+      expect(result.asset_paths).toEqual([".aigrc/assets"]);
+      expect(result.verification_failure_mode).toBe("SANDBOX");
+    });
+
+    it("should accept full config", () => {
+      const result = AigrcRuntimeConfigSchema.parse({
+        default_policy: "production",
+        policy_paths: ["policies", ".aigrc/policies"],
+        asset_paths: ["assets"],
+        verification_failure_mode: "FAIL",
+        telemetry: {
+          enabled: true,
+          endpoint: "https://telemetry.example.com",
+          sample_rate: 0.5,
+        },
+        kill_switch: {
+          enabled: true,
+          channel: "polling",
+          endpoint: "https://ks.example.com",
+          poll_interval_ms: 10000,
+        },
+      });
+      expect(result.default_policy).toBe("production");
+      expect(result.telemetry?.sample_rate).toBe(0.5);
+      expect(result.kill_switch?.channel).toBe("polling");
+    });
+  });
+
+  describe("AigrcIntegrationsConfigSchema", () => {
+    it("should accept minimal integrations", () => {
+      const result = AigrcIntegrationsConfigSchema.parse({});
+      expect(result.jira).toBeUndefined();
+      expect(result.github).toBeUndefined();
+    });
+
+    it("should accept full integrations", () => {
+      const result = AigrcIntegrationsConfigSchema.parse({
+        jira: {
+          enabled: true,
+          url: "https://company.atlassian.net",
+          project_key: "AI",
+        },
+        azure_devops: {
+          enabled: true,
+          organization: "company",
+          project: "ai-governance",
+        },
+        github: {
+          enabled: true,
+          owner: "company",
+          repo: "ai-assets",
+        },
+      });
+      expect(result.jira?.enabled).toBe(true);
+      expect(result.azure_devops?.organization).toBe("company");
+      expect(result.github?.repo).toBe("ai-assets");
+    });
+  });
+
+  describe("AigrcConfigSchema", () => {
+    it("should accept minimal config", () => {
+      const result = AigrcConfigSchema.parse({
+        version: "1.0",
+      });
+      expect(result.version).toBe("1.0");
+      expect(result.runtime).toBeUndefined();
+    });
+
+    it("should accept full config with environments", () => {
+      const result = AigrcConfigSchema.parse({
+        version: "1.0",
+        name: "My AI Project",
+        description: "AI governance configuration",
+        runtime: {
+          default_policy: "default",
+          verification_failure_mode: "SANDBOX",
+        },
+        integrations: {
+          jira: {
+            enabled: true,
+            url: "https://company.atlassian.net",
+          },
+        },
+        environments: {
+          production: {
+            runtime: {
+              verification_failure_mode: "FAIL",
+            },
+          },
+          development: {
+            runtime: {
+              verification_failure_mode: "SANDBOX",
+            },
+          },
+        },
+      });
+      expect(result.name).toBe("My AI Project");
+      expect(result.environments?.production?.runtime?.verification_failure_mode).toBe("FAIL");
+      expect(result.environments?.development?.runtime?.verification_failure_mode).toBe("SANDBOX");
+    });
+
+    it("should reject invalid version", () => {
+      expect(() => AigrcConfigSchema.parse({
+        version: "2.0",
+      })).toThrow();
     });
   });
 });

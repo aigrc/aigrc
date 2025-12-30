@@ -18,5 +18,11 @@ export * from "./golden-thread";
 // Detection
 export * from "./detection";
 
+// Configuration discovery
+export * from "./config";
+
+// Policy engine
+export * from "./policy";
+
 // Utilities
 export * from "./utils";

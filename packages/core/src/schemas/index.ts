@@ -477,6 +477,170 @@ export const AssetCardRuntimeSchema = z.object({
 export type AssetCardRuntime = z.infer<typeof AssetCardRuntimeSchema>;
 
 // ─────────────────────────────────────────────────────────────────
+// POLICY FILE SCHEMA (SPEC-RT-003)
+// Defines runtime governance policies for AI agents
+// ─────────────────────────────────────────────────────────────────
+
+export const PolicyRuleEffectSchema = z.enum(["allow", "deny", "audit"]);
+export type PolicyRuleEffect = z.infer<typeof PolicyRuleEffectSchema>;
+
+export const PolicyRuleSchema = z.object({
+  /** Unique identifier for this rule */
+  id: z.string().min(1),
+  /** Human-readable description */
+  description: z.string().optional(),
+  /** Effect when rule matches: allow, deny, or audit */
+  effect: PolicyRuleEffectSchema,
+  /** Actions/tools this rule applies to (supports wildcards) */
+  actions: z.array(z.string()).default(["*"]),
+  /** Resources/domains this rule applies to (supports patterns) */
+  resources: z.array(z.string()).default(["*"]),
+  /** Conditions that must be true for rule to apply */
+  conditions: z.object({
+    /** Required risk levels for this rule to apply */
+    risk_levels: z.array(RiskLevelSchema).optional(),
+    /** Required operating modes */
+    modes: z.array(OperatingModeSchema).optional(),
+    /** Time-based conditions (ISO 8601 time ranges) */
+    time_ranges: z.array(z.object({
+      start: z.string(),
+      end: z.string(),
+    })).optional(),
+    /** Custom condition expressions */
+    custom: z.record(z.unknown()).optional(),
+  }).optional(),
+  /** Priority for rule ordering (higher = evaluated first) */
+  priority: z.number().int().default(0),
+});
+
+export type PolicyRule = z.infer<typeof PolicyRuleSchema>;
+
+export const PolicyCapabilitiesSchema = z.object({
+  /** Default effect when no rule matches */
+  default_effect: PolicyRuleEffectSchema.default("deny"),
+  /** Allowed tools (supports wildcards: *, prefix_*) */
+  allowed_tools: z.array(z.string()).default([]),
+  /** Denied tools (takes precedence) */
+  denied_tools: z.array(z.string()).default([]),
+  /** Allowed domain patterns */
+  allowed_domains: z.array(z.string()).default([]),
+  /** Denied domain patterns */
+  denied_domains: z.array(z.string()).default([]),
+  /** Maximum budget per session in USD */
+  max_budget_per_session: z.number().positive().nullable().optional(),
+  /** Maximum budget per day in USD */
+  max_budget_per_day: z.number().positive().nullable().optional(),
+  /** Whether agent can spawn children */
+  may_spawn: z.boolean().default(false),
+  /** Maximum spawn depth */
+  max_spawn_depth: z.number().int().min(0).default(0),
+});
+
+export type PolicyCapabilities = z.infer<typeof PolicyCapabilitiesSchema>;
+
+export const PolicyFileSchema = z.object({
+  /** Schema version for forward compatibility */
+  version: z.literal("1.0"),
+  /** Unique policy identifier */
+  id: z.string().min(1),
+  /** Human-readable name */
+  name: z.string().min(1).max(100),
+  /** Description of this policy */
+  description: z.string().max(500).optional(),
+  /** Parent policy to inherit from */
+  extends: z.string().optional(),
+  /** Target asset IDs or patterns this policy applies to */
+  applies_to: z.array(z.string()).default(["*"]),
+  /** Default capabilities when no rules match */
+  capabilities: PolicyCapabilitiesSchema.optional(),
+  /** Ordered list of policy rules */
+  rules: z.array(PolicyRuleSchema).default([]),
+  /** Metadata */
+  metadata: z.object({
+    created_at: z.string().datetime().optional(),
+    updated_at: z.string().datetime().optional(),
+    created_by: z.string().optional(),
+    tags: z.array(z.string()).optional(),
+  }).optional(),
+});
+
+export type PolicyFile = z.infer<typeof PolicyFileSchema>;
+
+// ─────────────────────────────────────────────────────────────────
+// AIGRC CONFIGURATION SCHEMA (.aigrc.yaml)
+// Root configuration file for AIGRC projects
+// ─────────────────────────────────────────────────────────────────
+
+export const AigrcRuntimeConfigSchema = z.object({
+  /** Default policy file path */
+  default_policy: z.string().optional(),
+  /** Policy search paths */
+  policy_paths: z.array(z.string()).default([".aigrc/policies"]),
+  /** Asset card search paths */
+  asset_paths: z.array(z.string()).default([".aigrc/assets"]),
+  /** Default verification failure mode */
+  verification_failure_mode: z.enum(["SANDBOX", "FAIL"]).default("SANDBOX"),
+  /** Telemetry configuration */
+  telemetry: z.object({
+    enabled: z.boolean().default(true),
+    endpoint: z.string().url().optional(),
+    sample_rate: z.number().min(0).max(1).default(1.0),
+  }).optional(),
+  /** Kill switch configuration */
+  kill_switch: z.object({
+    enabled: z.boolean().default(true),
+    channel: z.enum(["sse", "polling", "file"]).default("sse"),
+    endpoint: z.string().url().optional(),
+    poll_interval_ms: z.number().int().positive().default(5000),
+  }).optional(),
+});
+
+export type AigrcRuntimeConfig = z.infer<typeof AigrcRuntimeConfigSchema>;
+
+export const AigrcIntegrationsConfigSchema = z.object({
+  /** JIRA integration */
+  jira: z.object({
+    enabled: z.boolean().default(false),
+    url: z.string().url().optional(),
+    project_key: z.string().optional(),
+  }).optional(),
+  /** Azure DevOps integration */
+  azure_devops: z.object({
+    enabled: z.boolean().default(false),
+    organization: z.string().optional(),
+    project: z.string().optional(),
+  }).optional(),
+  /** GitHub integration */
+  github: z.object({
+    enabled: z.boolean().default(false),
+    owner: z.string().optional(),
+    repo: z.string().optional(),
+  }).optional(),
+});
+
+export type AigrcIntegrationsConfig = z.infer<typeof AigrcIntegrationsConfigSchema>;
+
+export const AigrcConfigSchema = z.object({
+  /** Schema version */
+  version: z.literal("1.0"),
+  /** Project name */
+  name: z.string().min(1).max(100).optional(),
+  /** Project description */
+  description: z.string().max(500).optional(),
+  /** Runtime governance configuration */
+  runtime: AigrcRuntimeConfigSchema.optional(),
+  /** External integrations */
+  integrations: AigrcIntegrationsConfigSchema.optional(),
+  /** Environment-specific overrides */
+  environments: z.record(z.object({
+    runtime: AigrcRuntimeConfigSchema.partial().optional(),
+    integrations: AigrcIntegrationsConfigSchema.partial().optional(),
+  })).optional(),
+});
+
+export type AigrcConfig = z.infer<typeof AigrcConfigSchema>;
+
+// ─────────────────────────────────────────────────────────────────
 // ASSET CARD SCHEMA (Main Schema)
 // ─────────────────────────────────────────────────────────────────
 

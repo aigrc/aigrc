@@ -1,0 +1,463 @@
+import type { PolicyFile, PolicyRule, PolicyCapabilities, RiskLevel, OperatingMode } from "./schemas";
+
+// ─────────────────────────────────────────────────────────────────
+// POLICY INHERITANCE (SPEC-RT-003)
+// Resolves policy inheritance chains and merges policies
+// ─────────────────────────────────────────────────────────────────
+
+/** Maximum inheritance depth to prevent infinite loops */
+export const MAX_INHERITANCE_DEPTH = 10;
+
+/** Error thrown when policy resolution fails */
+export class PolicyResolutionError extends Error {
+  constructor(
+    message: string,
+    public readonly policyId: string,
+    public readonly cause?: unknown
+  ) {
+    super(message);
+    this.name = "PolicyResolutionError";
+  }
+}
+
+/** Result of policy resolution */
+export interface ResolvedPolicy {
+  /** The fully resolved policy (all inheritance applied) */
+  policy: PolicyFile;
+  /** Chain of policy IDs from root to this policy */
+  inheritanceChain: string[];
+  /** Number of policies in the chain */
+  depth: number;
+}
+
+/** Policy repository for loading policies by ID */
+export interface PolicyRepository {
+  /** Gets a policy by ID */
+  get(id: string): PolicyFile | undefined;
+  /** Checks if a policy exists */
+  has(id: string): boolean;
+}
+
+/**
+ * Creates a PolicyRepository from a Map
+ */
+export function createPolicyRepository(
+  policies: Map<string, PolicyFile>
+): PolicyRepository {
+  return {
+    get: (id) => policies.get(id),
+    has: (id) => policies.has(id),
+  };
+}
+
+/**
+ * Resolves a policy by ID, applying all inherited policies.
+ *
+ * @param policyId The ID of the policy to resolve
+ * @param repository Repository for loading policies
+ * @returns Resolved policy with all inheritance applied
+ */
+export function resolvePolicy(
+  policyId: string,
+  repository: PolicyRepository
+): ResolvedPolicy {
+  const chain: PolicyFile[] = [];
+  const seenIds = new Set<string>();
+  let currentId: string | undefined = policyId;
+
+  // Build inheritance chain
+  while (currentId) {
+    if (seenIds.has(currentId)) {
+      throw new PolicyResolutionError(
+        `Circular inheritance detected: ${currentId}`,
+        policyId
+      );
+    }
+
+    if (chain.length >= MAX_INHERITANCE_DEPTH) {
+      throw new PolicyResolutionError(
+        `Maximum inheritance depth (${MAX_INHERITANCE_DEPTH}) exceeded`,
+        policyId
+      );
+    }
+
+    const policy = repository.get(currentId);
+    if (!policy) {
+      throw new PolicyResolutionError(
+        `Policy not found: ${currentId}`,
+        policyId
+      );
+    }
+
+    seenIds.add(currentId);
+    chain.push(policy);
+    currentId = policy.extends;
+  }
+
+  // Reverse to get root-first order
+  chain.reverse();
+
+  // Merge policies from root to leaf
+  const mergedPolicy = chain.reduce<PolicyFile>(
+    (accumulated, current) => mergePolicies(accumulated, current),
+    createEmptyPolicy(chain[0]?.id ?? policyId)
+  );
+
+  // Use the original policy's ID
+  mergedPolicy.id = policyId;
+
+  return {
+    policy: mergedPolicy,
+    inheritanceChain: chain.map((p) => p.id),
+    depth: chain.length,
+  };
+}
+
+/**
+ * Creates an empty policy as a starting point for merging
+ */
+function createEmptyPolicy(id: string): PolicyFile {
+  return {
+    version: "1.0",
+    id,
+    name: "",
+    applies_to: [],
+    rules: [],
+  };
+}
+
+/**
+ * Merges two policies, with the child taking precedence.
+ *
+ * Merge rules:
+ * - Scalar values: child overrides parent
+ * - Arrays (rules): child's rules are appended after parent's
+ * - Capabilities: deep merge with child overriding
+ * - applies_to: replaced entirely by child if specified
+ */
+export function mergePolicies(
+  parent: PolicyFile,
+  child: PolicyFile
+): PolicyFile {
+  return {
+    version: child.version,
+    id: child.id,
+    name: child.name || parent.name,
+    description: child.description ?? parent.description,
+    extends: child.extends, // Keep child's extends for reference
+    applies_to:
+      child.applies_to.length > 0 && child.applies_to[0] !== "*"
+        ? child.applies_to
+        : parent.applies_to,
+    capabilities: mergeCapabilities(parent.capabilities, child.capabilities),
+    rules: mergeRules(parent.rules, child.rules),
+    metadata: {
+      ...parent.metadata,
+      ...child.metadata,
+      // Merge tags
+      tags: mergeArrays(parent.metadata?.tags, child.metadata?.tags),
+    },
+  };
+}
+
+/**
+ * Merges capability objects
+ */
+function mergeCapabilities(
+  parent?: PolicyCapabilities,
+  child?: PolicyCapabilities
+): PolicyCapabilities | undefined {
+  if (!parent && !child) {
+    return undefined;
+  }
+
+  if (!parent) {
+    return child;
+  }
+
+  if (!child) {
+    return parent;
+  }
+
+  return {
+    default_effect: child.default_effect ?? parent.default_effect,
+    allowed_tools: mergeArrays(parent.allowed_tools, child.allowed_tools),
+    denied_tools: mergeArrays(parent.denied_tools, child.denied_tools),
+    allowed_domains: mergeArrays(parent.allowed_domains, child.allowed_domains),
+    denied_domains: mergeArrays(parent.denied_domains, child.denied_domains),
+    max_budget_per_session:
+      child.max_budget_per_session ?? parent.max_budget_per_session,
+    max_budget_per_day: child.max_budget_per_day ?? parent.max_budget_per_day,
+    may_spawn: child.may_spawn ?? parent.may_spawn,
+    max_spawn_depth: child.max_spawn_depth ?? parent.max_spawn_depth,
+  };
+}
+
+/**
+ * Merges rule arrays.
+ * Child rules are appended after parent rules, so they have higher precedence
+ * when rules are evaluated in order.
+ */
+function mergeRules(
+  parentRules: PolicyRule[],
+  childRules: PolicyRule[]
+): PolicyRule[] {
+  // Combine rules - child rules come after parent, giving them effective priority
+  const allRules = [...parentRules, ...childRules];
+
+  // Sort by priority (higher priority evaluated first)
+  return allRules.sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
+}
+
+/**
+ * Merges two arrays, removing duplicates
+ */
+function mergeArrays<T>(parent?: T[], child?: T[]): T[] {
+  const combined = [...(parent ?? []), ...(child ?? [])];
+  return [...new Set(combined)];
+}
+
+// ─────────────────────────────────────────────────────────────────
+// POLICY EVALUATION
+// Evaluates policies against actions and resources
+// ─────────────────────────────────────────────────────────────────
+
+/** Context for policy evaluation */
+export interface PolicyEvaluationContext {
+  /** Current risk level of the agent */
+  riskLevel: RiskLevel;
+  /** Current operating mode */
+  mode: OperatingMode;
+  /** Current timestamp (ISO 8601) */
+  timestamp?: string;
+  /** Custom context values */
+  custom?: Record<string, unknown>;
+}
+
+/** Result of evaluating a policy rule */
+export interface PolicyEvaluationResult {
+  /** Whether the action is allowed */
+  allowed: boolean;
+  /** Effect that was applied */
+  effect: "allow" | "deny" | "audit";
+  /** Rule that matched, if any */
+  matchedRule?: PolicyRule;
+  /** Whether any rule matched */
+  matched: boolean;
+  /** Reason for the decision */
+  reason: string;
+}
+
+/**
+ * Evaluates a policy for a given action and resource.
+ *
+ * @param policy The resolved policy to evaluate
+ * @param action The action being performed (e.g., "read_file")
+ * @param resource The resource being accessed (e.g., "/path/to/file")
+ * @param context Evaluation context
+ * @returns Evaluation result
+ */
+export function evaluatePolicy(
+  policy: PolicyFile,
+  action: string,
+  resource: string,
+  context: PolicyEvaluationContext
+): PolicyEvaluationResult {
+  // Find first matching rule
+  for (const rule of policy.rules) {
+    if (ruleMatches(rule, action, resource, context)) {
+      return {
+        allowed: rule.effect === "allow",
+        effect: rule.effect,
+        matchedRule: rule,
+        matched: true,
+        reason: `Rule "${rule.id}" matched: ${rule.description ?? rule.effect}`,
+      };
+    }
+  }
+
+  // No rule matched, use default effect from capabilities
+  const defaultEffect = policy.capabilities?.default_effect ?? "deny";
+  return {
+    allowed: defaultEffect === "allow",
+    effect: defaultEffect,
+    matchedRule: undefined,
+    matched: false,
+    reason: `No rule matched, using default effect: ${defaultEffect}`,
+  };
+}
+
+/**
+ * Checks if a rule matches the given action, resource, and context
+ */
+function ruleMatches(
+  rule: PolicyRule,
+  action: string,
+  resource: string,
+  context: PolicyEvaluationContext
+): boolean {
+  // Check action match
+  if (!matchesPattern(action, rule.actions)) {
+    return false;
+  }
+
+  // Check resource match
+  if (!matchesPattern(resource, rule.resources)) {
+    return false;
+  }
+
+  // Check conditions if present
+  if (rule.conditions) {
+    if (!evaluateConditions(rule.conditions, context)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Checks if a value matches any of the patterns
+ */
+function matchesPattern(value: string, patterns: string[]): boolean {
+  for (const pattern of patterns) {
+    if (pattern === "*") {
+      return true;
+    }
+    if (pattern.endsWith("*")) {
+      const prefix = pattern.slice(0, -1);
+      if (value.startsWith(prefix)) {
+        return true;
+      }
+    } else if (pattern.startsWith("*")) {
+      const suffix = pattern.slice(1);
+      if (value.endsWith(suffix)) {
+        return true;
+      }
+    } else if (pattern === value) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Evaluates rule conditions against context
+ */
+function evaluateConditions(
+  conditions: NonNullable<PolicyRule["conditions"]>,
+  context: PolicyEvaluationContext
+): boolean {
+  // Check risk level condition
+  if (conditions.risk_levels && conditions.risk_levels.length > 0) {
+    if (!conditions.risk_levels.includes(context.riskLevel)) {
+      return false;
+    }
+  }
+
+  // Check mode condition
+  if (conditions.modes && conditions.modes.length > 0) {
+    if (!conditions.modes.includes(context.mode)) {
+      return false;
+    }
+  }
+
+  // Check time range condition
+  if (conditions.time_ranges && conditions.time_ranges.length > 0 && context.timestamp) {
+    const currentTime = new Date(context.timestamp);
+    const timeStr = currentTime.toTimeString().slice(0, 5); // HH:MM format
+
+    const inRange = conditions.time_ranges.some(range => {
+      return timeStr >= range.start && timeStr <= range.end;
+    });
+
+    if (!inRange) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Checks if an action is allowed by capability lists.
+ * Uses tool allow/deny lists for quick checks without full rule evaluation.
+ */
+export function isToolAllowed(
+  tool: string,
+  capabilities?: PolicyCapabilities
+): boolean {
+  if (!capabilities) {
+    return false; // Default deny when no capabilities defined
+  }
+
+  // Check denied list first (takes precedence)
+  if (
+    capabilities.denied_tools.length > 0 &&
+    matchesPattern(tool, capabilities.denied_tools)
+  ) {
+    return false;
+  }
+
+  // Check allowed list
+  if (
+    capabilities.allowed_tools.length > 0 &&
+    matchesPattern(tool, capabilities.allowed_tools)
+  ) {
+    return true;
+  }
+
+  // Fall back to default effect
+  return capabilities.default_effect === "allow";
+}
+
+/**
+ * Checks if a domain is allowed by capability lists.
+ */
+export function isDomainAllowed(
+  domain: string,
+  capabilities?: PolicyCapabilities
+): boolean {
+  if (!capabilities) {
+    return false;
+  }
+
+  // Check denied list first
+  if (
+    capabilities.denied_domains.length > 0 &&
+    matchesDomainPattern(domain, capabilities.denied_domains)
+  ) {
+    return false;
+  }
+
+  // Check allowed list
+  if (
+    capabilities.allowed_domains.length > 0 &&
+    matchesDomainPattern(domain, capabilities.allowed_domains)
+  ) {
+    return true;
+  }
+
+  return capabilities.default_effect === "allow";
+}
+
+/**
+ * Matches a domain against domain patterns (supports wildcards like *.example.com)
+ */
+function matchesDomainPattern(domain: string, patterns: string[]): boolean {
+  for (const pattern of patterns) {
+    if (pattern === "*") {
+      return true;
+    }
+    if (pattern.startsWith("*.")) {
+      // Wildcard subdomain match
+      const suffix = pattern.slice(1); // .example.com
+      if (domain === pattern.slice(2) || domain.endsWith(suffix)) {
+        return true;
+      }
+    } else if (pattern === domain) {
+      return true;
+    }
+  }
+  return false;
+}

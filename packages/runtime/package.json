@@ -1,0 +1,55 @@
+{
+  "name": "@aigos/runtime",
+  "version": "0.1.0",
+  "description": "AIGOS Runtime Governance Layer - Runtime identity, policy enforcement, and kill switch",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "ai",
+    "governance",
+    "runtime",
+    "identity",
+    "kill-switch",
+    "policy",
+    "aigos"
+  ],
+  "author": "Pango Labs",
+  "license": "MIT",
+  "dependencies": {
+    "@aigrc/core": "workspace:*",
+    "jose": "^5.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "typescript": {
+      "optional": true
+    }
+  }
+}
