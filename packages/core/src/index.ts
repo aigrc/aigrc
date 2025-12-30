@@ -6,6 +6,9 @@ export * from "./schemas";
 // Risk classification
 export * from "./classification";
 
+// Risk utilities
+export * from "./risk-utils";
+
 // Asset card operations
 export * from "./asset-card";
 

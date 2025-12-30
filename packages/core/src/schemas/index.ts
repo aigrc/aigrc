@@ -225,6 +225,258 @@ export const ConstraintsSchema = z.object({
 export type Constraints = z.infer<typeof ConstraintsSchema>;
 
 // ─────────────────────────────────────────────────────────────────
+// RISK LEVEL SCHEMA (for runtime governance)
+// ─────────────────────────────────────────────────────────────────
+
+export const RiskLevelSchema = z.enum(["minimal", "limited", "high", "unacceptable"]);
+export type RiskLevel = z.infer<typeof RiskLevelSchema>;
+
+// ─────────────────────────────────────────────────────────────────
+// GOLDEN THREAD SCHEMA (SPEC-PRT-001)
+// Cryptographic linking from runtime to business authorization
+// ─────────────────────────────────────────────────────────────────
+
+export const GoldenThreadSchema = z.object({
+  /** Ticket ID from approval system (e.g., "FIN-1234") */
+  ticket_id: z.string().min(1),
+  /** Email of approver (e.g., "ciso@corp.com") */
+  approved_by: z.string().email(),
+  /** ISO 8601 timestamp of approval (e.g., "2025-01-15T10:30:00Z") */
+  approved_at: z.string().datetime(),
+  /** SHA-256 hash of canonical string: sha256:{64 hex chars} */
+  hash: z.string().regex(/^sha256:[a-f0-9]{64}$/).optional(),
+  /** Optional cryptographic signature: {ALGORITHM}:{BASE64_SIGNATURE} */
+  signature: z.string().regex(/^(RSA-SHA256|ECDSA-P256):[A-Za-z0-9+/=]+$/).optional(),
+});
+
+export type GoldenThread = z.infer<typeof GoldenThreadSchema>;
+
+// ─────────────────────────────────────────────────────────────────
+// LINEAGE SCHEMA (SPEC-RT-002: Agent Hierarchy)
+// Tracks parent-child relationships for spawned agents
+// ─────────────────────────────────────────────────────────────────
+
+export const LineageSchema = z.object({
+  /** Parent agent's instance_id, null for root agents */
+  parent_instance_id: z.string().uuid().nullable(),
+  /** Depth in spawn tree: 0 for root, 1 for first child, etc. */
+  generation_depth: z.number().int().min(0),
+  /** Chain of ancestor instance_ids from root to parent */
+  ancestor_chain: z.array(z.string().uuid()),
+  /** When this agent was spawned */
+  spawned_at: z.string().datetime(),
+  /** Root agent's instance_id for tracing entire tree */
+  root_instance_id: z.string().uuid(),
+});
+
+export type Lineage = z.infer<typeof LineageSchema>;
+
+// ─────────────────────────────────────────────────────────────────
+// CAPABILITIES MANIFEST SCHEMA (SPEC-RT-002)
+// Defines what actions/resources an agent is allowed
+// ─────────────────────────────────────────────────────────────────
+
+export const CapabilitiesManifestSchema = z.object({
+  /** List of allowed tool/action identifiers (supports wildcards: *, prefix_*) */
+  allowed_tools: z.array(z.string()).default([]),
+  /** List of explicitly denied tools (takes precedence over allowed) */
+  denied_tools: z.array(z.string()).default([]),
+  /** Allowed domain patterns (regex) for external resources */
+  allowed_domains: z.array(z.string()).default([]),
+  /** Denied domain patterns (takes precedence over allowed) */
+  denied_domains: z.array(z.string()).default([]),
+  /** Maximum cost per session in USD */
+  max_cost_per_session: z.number().positive().nullable().optional(),
+  /** Maximum cost per day in USD */
+  max_cost_per_day: z.number().positive().nullable().optional(),
+  /** Maximum tokens per single API call */
+  max_tokens_per_call: z.number().int().positive().nullable().optional(),
+  /** Whether this agent can spawn child agents */
+  may_spawn_children: z.boolean().default(false),
+  /** Maximum depth of child agent spawning (0 = cannot spawn) */
+  max_child_depth: z.number().int().min(0).default(0),
+  /** Capability decay mode for children: decay, explicit, inherit */
+  capability_mode: z.enum(["decay", "explicit", "inherit"]).default("decay"),
+  /** Custom extension fields */
+  custom: z.record(z.unknown()).optional(),
+});
+
+export type CapabilitiesManifest = z.infer<typeof CapabilitiesManifestSchema>;
+
+// ─────────────────────────────────────────────────────────────────
+// OPERATING MODE SCHEMA (SPEC-RT-002)
+// ─────────────────────────────────────────────────────────────────
+
+export const OperatingModeSchema = z.enum(["NORMAL", "SANDBOX", "RESTRICTED"]);
+export type OperatingMode = z.infer<typeof OperatingModeSchema>;
+
+// ─────────────────────────────────────────────────────────────────
+// RUNTIME IDENTITY SCHEMA (SPEC-RT-002)
+// Cryptographic identity established at agent startup
+// ─────────────────────────────────────────────────────────────────
+
+export const RuntimeIdentitySchema = z.object({
+  /** Unique UUIDv4 for this runtime instance */
+  instance_id: z.string().uuid(),
+  /** Asset ID from the Asset Card (e.g., "aigrc-2024-a1b2c3d4") */
+  asset_id: z.string().regex(/^aigrc-\d{4}-[a-f0-9]{8}$/),
+  /** Human-readable name from Asset Card */
+  asset_name: z.string().min(1).max(100),
+  /** Semantic version from Asset Card */
+  asset_version: z.string().regex(/^\d+\.\d+\.\d+/),
+  /** SHA-256 hash of Golden Thread data */
+  golden_thread_hash: z.string().regex(/^sha256:[a-f0-9]{64}$/),
+  /** Full Golden Thread authorization data */
+  golden_thread: GoldenThreadSchema,
+  /** Risk level from classification */
+  risk_level: RiskLevelSchema,
+  /** Agent lineage for spawned agents */
+  lineage: LineageSchema,
+  /** Capabilities manifest defining permissions */
+  capabilities_manifest: CapabilitiesManifestSchema,
+  /** When this identity was created */
+  created_at: z.string().datetime(),
+  /** Whether Golden Thread hash has been verified */
+  verified: z.boolean().default(false),
+  /** Current operating mode */
+  mode: OperatingModeSchema.default("NORMAL"),
+});
+
+export type RuntimeIdentity = z.infer<typeof RuntimeIdentitySchema>;
+
+// ─────────────────────────────────────────────────────────────────
+// KILL SWITCH COMMAND SCHEMA (SPEC-RT-005)
+// Remote termination command structure
+// ─────────────────────────────────────────────────────────────────
+
+export const KillSwitchCommandTypeSchema = z.enum(["TERMINATE", "PAUSE", "RESUME"]);
+export type KillSwitchCommandType = z.infer<typeof KillSwitchCommandTypeSchema>;
+
+export const KillSwitchCommandSchema = z.object({
+  /** Unique command ID for idempotency and replay prevention */
+  command_id: z.string().uuid(),
+  /** Type of command */
+  type: KillSwitchCommandTypeSchema,
+  /** Target instance_id (optional, for specific instance) */
+  instance_id: z.string().uuid().optional(),
+  /** Target asset_id (optional, for all instances of an asset) */
+  asset_id: z.string().regex(/^aigrc-\d{4}-[a-f0-9]{8}$/).optional(),
+  /** Target organization (optional, for org-wide kill) */
+  organization: z.string().optional(),
+  /** Cryptographic signature for verification */
+  signature: z.string(),
+  /** ISO 8601 timestamp for replay prevention */
+  timestamp: z.string().datetime(),
+  /** Human-readable reason for audit trail */
+  reason: z.string().max(500),
+  /** Issuer of the command (email or system ID) */
+  issued_by: z.string(),
+});
+
+export type KillSwitchCommand = z.infer<typeof KillSwitchCommandSchema>;
+
+// ─────────────────────────────────────────────────────────────────
+// GOVERNANCE TOKEN PAYLOAD SCHEMA (SPEC-PRT-003: A2A)
+// JWT payload for agent-to-agent mutual authentication
+// ─────────────────────────────────────────────────────────────────
+
+export const GovernanceTokenIdentityClaimsSchema = z.object({
+  instance_id: z.string().uuid(),
+  asset_id: z.string(),
+  asset_name: z.string(),
+  asset_version: z.string(),
+});
+
+export const GovernanceTokenGovernanceClaimsSchema = z.object({
+  risk_level: RiskLevelSchema,
+  golden_thread: z.object({
+    hash: z.string().regex(/^sha256:[a-f0-9]{64}$/),
+    verified: z.boolean(),
+    ticket_id: z.string(),
+  }),
+  mode: OperatingModeSchema,
+});
+
+export const GovernanceTokenControlClaimsSchema = z.object({
+  kill_switch: z.object({
+    enabled: z.boolean(),
+    channel: z.enum(["sse", "polling", "file"]),
+  }),
+  paused: z.boolean(),
+  termination_pending: z.boolean(),
+});
+
+export const GovernanceTokenCapabilityClaimsSchema = z.object({
+  hash: z.string(),
+  tools: z.array(z.string()),
+  max_budget_usd: z.number().nullable(),
+  can_spawn: z.boolean(),
+  max_child_depth: z.number().int().min(0),
+});
+
+export const GovernanceTokenLineageClaimsSchema = z.object({
+  generation_depth: z.number().int().min(0),
+  parent_instance_id: z.string().uuid().nullable(),
+  root_instance_id: z.string().uuid(),
+});
+
+export const GovernanceTokenPayloadSchema = z.object({
+  // Standard JWT claims
+  /** Issuer: "aigos-runtime" */
+  iss: z.literal("aigos-runtime"),
+  /** Subject: instance_id of the agent */
+  sub: z.string().uuid(),
+  /** Audience: "aigos-agents" or specific agent */
+  aud: z.union([z.string(), z.array(z.string())]),
+  /** Expiration timestamp (Unix epoch) */
+  exp: z.number().int().positive(),
+  /** Issued at timestamp (Unix epoch) */
+  iat: z.number().int().positive(),
+  /** Not before timestamp (Unix epoch) */
+  nbf: z.number().int().positive(),
+  /** Unique JWT ID */
+  jti: z.string().uuid(),
+
+  // AIGOS-specific claims
+  aigos: z.object({
+    identity: GovernanceTokenIdentityClaimsSchema,
+    governance: GovernanceTokenGovernanceClaimsSchema,
+    control: GovernanceTokenControlClaimsSchema,
+    capabilities: GovernanceTokenCapabilityClaimsSchema,
+    lineage: GovernanceTokenLineageClaimsSchema,
+  }),
+});
+
+export type GovernanceTokenPayload = z.infer<typeof GovernanceTokenPayloadSchema>;
+export type GovernanceTokenIdentityClaims = z.infer<typeof GovernanceTokenIdentityClaimsSchema>;
+export type GovernanceTokenGovernanceClaims = z.infer<typeof GovernanceTokenGovernanceClaimsSchema>;
+export type GovernanceTokenControlClaims = z.infer<typeof GovernanceTokenControlClaimsSchema>;
+export type GovernanceTokenCapabilityClaims = z.infer<typeof GovernanceTokenCapabilityClaimsSchema>;
+export type GovernanceTokenLineageClaims = z.infer<typeof GovernanceTokenLineageClaimsSchema>;
+
+// ─────────────────────────────────────────────────────────────────
+// ASSET CARD RUNTIME EXTENSION (SPEC-FMT-002)
+// Optional runtime section for Asset Cards
+// ─────────────────────────────────────────────────────────────────
+
+export const AssetCardRuntimeSchema = z.object({
+  /** Path to policy file for this asset */
+  policy_path: z.string().optional(),
+  /** Behavior when Golden Thread verification fails */
+  verification_failure_mode: z.enum(["SANDBOX", "FAIL"]).default("SANDBOX"),
+  /** Whether telemetry is enabled for this asset */
+  telemetry_enabled: z.boolean().default(true),
+  /** Kill switch configuration */
+  kill_switch: z.object({
+    enabled: z.boolean().default(true),
+    channel: z.enum(["sse", "polling", "file"]).default("sse"),
+    endpoint: z.string().url().optional(),
+  }).optional(),
+});
+
+export type AssetCardRuntime = z.infer<typeof AssetCardRuntimeSchema>;
+
+// ─────────────────────────────────────────────────────────────────
 // ASSET CARD SCHEMA (Main Schema)
 // ─────────────────────────────────────────────────────────────────
 
@@ -245,6 +497,10 @@ export const AssetCardSchema = z.object({
   intent: IntentSchema,
   governance: GovernanceSchema,
   constraints: ConstraintsSchema.optional(),
+  /** Golden Thread authorization data (SPEC-PRT-001) */
+  golden_thread: GoldenThreadSchema.optional(),
+  /** Runtime governance configuration (SPEC-RT) */
+  runtime: AssetCardRuntimeSchema.optional(),
 });
 
 export type AssetCard = z.infer<typeof AssetCardSchema>;

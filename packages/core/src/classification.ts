@@ -1,6 +1,4 @@
-import type { RiskFactors } from "./schemas";
-
-export type RiskLevel = "minimal" | "limited" | "high" | "unacceptable";
+import type { RiskFactors, RiskLevel } from "./schemas";
 
 export interface ClassificationResult {
   riskLevel: RiskLevel;
