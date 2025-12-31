@@ -308,3 +308,258 @@ export function validateGoldenThread(asset: AssetCard): {
     issues,
   };
 }
+
+// ─────────────────────────────────────────────────────────────────
+// SIGNATURE VERIFICATION (AIG-33 / SPEC-PRT-001)
+// Optional cryptographic signature verification for Golden Thread
+// ─────────────────────────────────────────────────────────────────
+
+/** Supported signature algorithms */
+export type SignatureAlgorithm = "RSA-SHA256" | "ECDSA-P256";
+
+/** Result of signature verification */
+export interface SignatureVerificationResult {
+  /** Whether signature is valid */
+  verified: boolean;
+  /** Algorithm used */
+  algorithm: SignatureAlgorithm | null;
+  /** Error message if verification failed */
+  error?: string;
+  /** The data that was signed (canonical string) */
+  signedData?: string;
+}
+
+/** Public key for signature verification */
+export interface SignaturePublicKey {
+  /** Algorithm this key is for */
+  algorithm: SignatureAlgorithm;
+  /** PEM-encoded public key or JWK */
+  key: string;
+  /** Key ID for key rotation */
+  keyId?: string;
+}
+
+/**
+ * Parse a signature string in format: {ALGORITHM}:{BASE64_SIGNATURE}
+ */
+export function parseSignature(
+  signature: string
+): { algorithm: SignatureAlgorithm; data: Uint8Array } | null {
+  const match = signature.match(/^(RSA-SHA256|ECDSA-P256):([A-Za-z0-9+/=]+)$/);
+  if (!match) {
+    return null;
+  }
+
+  const algorithm = match[1] as SignatureAlgorithm;
+  const base64Data = match[2];
+
+  try {
+    // Decode base64 to Uint8Array
+    const binaryString = atob(base64Data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return { algorithm, data: bytes };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Verify a Golden Thread signature using Web Crypto API.
+ *
+ * @param components - The Golden Thread components that were signed
+ * @param signature - The signature in format {ALGORITHM}:{BASE64_SIGNATURE}
+ * @param publicKey - The public key for verification
+ * @returns Verification result
+ */
+export async function verifyGoldenThreadSignature(
+  components: GoldenThreadComponents,
+  signature: string,
+  publicKey: SignaturePublicKey
+): Promise<SignatureVerificationResult> {
+  // Parse the signature
+  const parsed = parseSignature(signature);
+  if (!parsed) {
+    return {
+      verified: false,
+      algorithm: null,
+      error: "Invalid signature format. Expected {ALGORITHM}:{BASE64_SIGNATURE}",
+    };
+  }
+
+  // Check algorithm matches
+  if (parsed.algorithm !== publicKey.algorithm) {
+    return {
+      verified: false,
+      algorithm: parsed.algorithm,
+      error: `Algorithm mismatch: signature uses ${parsed.algorithm}, key is ${publicKey.algorithm}`,
+    };
+  }
+
+  // Compute canonical string (the data that was signed)
+  const canonicalString = computeCanonicalString(components);
+  const encoder = new TextEncoder();
+  const data = encoder.encode(canonicalString);
+
+  try {
+    // Import the public key
+    const cryptoKey = await importPublicKey(publicKey);
+
+    // Verify the signature
+    const algorithmParams = getVerifyAlgorithm(parsed.algorithm);
+    const verified = await crypto.subtle.verify(
+      algorithmParams,
+      cryptoKey as Parameters<typeof crypto.subtle.verify>[1],
+      parsed.data,
+      data
+    );
+
+    return {
+      verified,
+      algorithm: parsed.algorithm,
+      signedData: canonicalString,
+      error: verified ? undefined : "Signature verification failed",
+    };
+  } catch (error) {
+    return {
+      verified: false,
+      algorithm: parsed.algorithm,
+      error: `Verification error: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
+}
+
+/**
+ * Synchronous signature verification using Node.js crypto
+ */
+export function verifyGoldenThreadSignatureSync(
+  components: GoldenThreadComponents,
+  signature: string,
+  publicKeyPem: string
+): SignatureVerificationResult {
+  const parsed = parseSignature(signature);
+  if (!parsed) {
+    return {
+      verified: false,
+      algorithm: null,
+      error: "Invalid signature format",
+    };
+  }
+
+  const canonicalString = computeCanonicalString(components);
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const crypto = require("crypto");
+
+    const verifier = crypto.createVerify(
+      parsed.algorithm === "RSA-SHA256" ? "RSA-SHA256" : "SHA256"
+    );
+    verifier.update(canonicalString);
+    verifier.end();
+
+    const verified = verifier.verify(publicKeyPem, Buffer.from(parsed.data));
+
+    return {
+      verified,
+      algorithm: parsed.algorithm,
+      signedData: canonicalString,
+      error: verified ? undefined : "Signature verification failed",
+    };
+  } catch (error) {
+    return {
+      verified: false,
+      algorithm: parsed.algorithm,
+      error: `Verification error: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
+}
+
+/**
+ * Sign Golden Thread components (for testing/tooling)
+ * Note: privateKey should be a CryptoKey from Web Crypto API
+ */
+export async function signGoldenThread(
+  components: GoldenThreadComponents,
+  privateKey: unknown,
+  algorithm: SignatureAlgorithm
+): Promise<string> {
+  const canonicalString = computeCanonicalString(components);
+  const encoder = new TextEncoder();
+  const data = encoder.encode(canonicalString);
+
+  const signatureBuffer = await crypto.subtle.sign(
+    getSignAlgorithm(algorithm),
+    privateKey as Parameters<typeof crypto.subtle.sign>[1],
+    data
+  );
+
+  // Convert to base64
+  const signatureArray = new Uint8Array(signatureBuffer);
+  const base64 = btoa(String.fromCharCode(...signatureArray));
+
+  return `${algorithm}:${base64}`;
+}
+
+/**
+ * Import a PEM-encoded public key for verification
+ * Returns a CryptoKey from Web Crypto API
+ */
+async function importPublicKey(publicKey: SignaturePublicKey): Promise<unknown> {
+  const pemHeader = "-----BEGIN PUBLIC KEY-----";
+  const pemFooter = "-----END PUBLIC KEY-----";
+
+  let keyData: ArrayBuffer;
+
+  if (publicKey.key.includes(pemHeader)) {
+    // PEM format
+    const pemContents = publicKey.key
+      .replace(pemHeader, "")
+      .replace(pemFooter, "")
+      .replace(/\s/g, "");
+    const binaryString = atob(pemContents);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    keyData = bytes.buffer;
+  } else {
+    // Assume raw base64
+    const binaryString = atob(publicKey.key);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    keyData = bytes.buffer;
+  }
+
+  const algorithm =
+    publicKey.algorithm === "RSA-SHA256"
+      ? { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }
+      : { name: "ECDSA", namedCurve: "P-256" };
+
+  return crypto.subtle.importKey("spki", keyData, algorithm, true, ["verify"]);
+}
+
+/** Web Crypto algorithm parameters */
+type WebCryptoAlgorithmParams = { name: string; hash?: string };
+
+/**
+ * Get Web Crypto verify algorithm params
+ */
+function getVerifyAlgorithm(algorithm: SignatureAlgorithm): WebCryptoAlgorithmParams {
+  if (algorithm === "RSA-SHA256") {
+    return { name: "RSASSA-PKCS1-v1_5" };
+  } else {
+    return { name: "ECDSA", hash: "SHA-256" };
+  }
+}
+
+/**
+ * Get Web Crypto sign algorithm params
+ */
+function getSignAlgorithm(algorithm: SignatureAlgorithm): WebCryptoAlgorithmParams {
+  return getVerifyAlgorithm(algorithm);
+}

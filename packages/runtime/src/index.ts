@@ -15,3 +15,6 @@ export * from "./telemetry.js";
 
 // Golden Thread verification
 export * from "./verification.js";
+
+// Guard decorator API
+export * from "./guard.js";
