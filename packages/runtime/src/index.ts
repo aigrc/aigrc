@@ -1,5 +1,5 @@
 // @aigos/runtime - Runtime Governance Layer
-// Implements SPEC-RT-002 and SPEC-RT-005
+// Implements SPEC-RT-002, SPEC-RT-003, and SPEC-RT-005
 
 // Identity management
 export * from "./identity.js";
@@ -18,3 +18,6 @@ export * from "./verification.js";
 
 // Guard decorator API
 export * from "./guard.js";
+
+// Policy Engine (The Bouncer) - SPEC-RT-003
+export * from "./policy-engine.js";
