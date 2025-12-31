@@ -12,3 +12,6 @@ export * from "./context.js";
 
 // Telemetry
 export * from "./telemetry.js";
+
+// Golden Thread verification
+export * from "./verification.js";

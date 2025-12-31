@@ -461,3 +461,322 @@ function matchesDomainPattern(domain: string, patterns: string[]): boolean {
   }
   return false;
 }
+
+// ─────────────────────────────────────────────────────────────────
+// POLICY SELECTION ALGORITHM (SPEC-RT-003 / AIG-24)
+// Selects the appropriate policy for an agent based on various criteria
+// ─────────────────────────────────────────────────────────────────
+
+/** Policy selection criteria */
+export interface PolicySelectionCriteria {
+  /** Asset ID to match */
+  assetId: string;
+  /** Risk level of the agent */
+  riskLevel: RiskLevel;
+  /** Operating mode */
+  mode: OperatingMode;
+  /** Tags associated with the agent */
+  tags?: string[];
+  /** Environment (e.g., "production", "staging") */
+  environment?: string;
+}
+
+/** Policy selection result */
+export interface PolicySelectionResult {
+  /** The selected policy (null if none found) */
+  policy: PolicyFile | null;
+  /** Policy ID */
+  policyId: string | null;
+  /** How the policy was selected */
+  selectionReason: PolicySelectionReason;
+  /** Policies that were considered */
+  candidatePolicies: string[];
+  /** Score breakdown for the selected policy */
+  score?: PolicyScore;
+}
+
+/** Reason for policy selection */
+export type PolicySelectionReason =
+  | "explicit_match"       // Matched by explicit asset ID
+  | "risk_level_match"     // Matched by risk level
+  | "tag_match"            // Matched by tags
+  | "wildcard_match"       // Matched by wildcard applies_to
+  | "default_policy"       // Used default policy
+  | "no_policy_found";     // No matching policy
+
+/** Score breakdown for policy selection */
+export interface PolicyScore {
+  /** Total score */
+  total: number;
+  /** Explicit asset match bonus */
+  explicitMatch: number;
+  /** Risk level match bonus */
+  riskLevelMatch: number;
+  /** Tag match count */
+  tagMatches: number;
+  /** Priority from policy */
+  priority: number;
+}
+
+/**
+ * Selects the best policy for an agent based on criteria.
+ *
+ * Selection algorithm:
+ * 1. Filter policies by applies_to (asset ID or wildcard)
+ * 2. Score remaining policies:
+ *    - Explicit asset match: +100
+ *    - Risk level match: +50
+ *    - Each tag match: +10
+ *    - Policy priority: +priority value
+ * 3. Return highest scoring policy
+ *
+ * @param criteria Selection criteria
+ * @param repository Policy repository
+ * @param defaultPolicyId Optional default policy ID
+ * @returns Selected policy result
+ */
+export function selectPolicy(
+  criteria: PolicySelectionCriteria,
+  repository: PolicyRepository,
+  defaultPolicyId?: string
+): PolicySelectionResult {
+  const candidatePolicies: string[] = [];
+  const scoredPolicies: Array<{
+    policyId: string;
+    policy: PolicyFile;
+    score: PolicyScore;
+    reason: PolicySelectionReason;
+  }> = [];
+
+  // Iterate through all policies in repository
+  // Note: This assumes we can iterate - in practice, might need getAllIds() method
+  const policies = getAllPoliciesFromRepository(repository);
+
+  for (const [policyId, policy] of policies) {
+    candidatePolicies.push(policyId);
+
+    // Check if policy applies to this asset
+    const appliesToResult = checkAppliesTo(policy.applies_to, criteria.assetId);
+    if (!appliesToResult.applies) {
+      continue;
+    }
+
+    // Score the policy
+    const score = scorePolicy(policy, criteria, appliesToResult.isExplicit);
+    const reason = determineSelectionReason(appliesToResult, score);
+
+    scoredPolicies.push({ policyId, policy, score, reason });
+  }
+
+  // Sort by score descending
+  scoredPolicies.sort((a, b) => b.score.total - a.score.total);
+
+  // Return the best match
+  if (scoredPolicies.length > 0) {
+    const best = scoredPolicies[0];
+    return {
+      policy: best.policy,
+      policyId: best.policyId,
+      selectionReason: best.reason,
+      candidatePolicies,
+      score: best.score,
+    };
+  }
+
+  // Try default policy
+  if (defaultPolicyId && repository.has(defaultPolicyId)) {
+    const defaultPolicy = repository.get(defaultPolicyId);
+    if (defaultPolicy) {
+      return {
+        policy: defaultPolicy,
+        policyId: defaultPolicyId,
+        selectionReason: "default_policy",
+        candidatePolicies,
+      };
+    }
+  }
+
+  // No policy found
+  return {
+    policy: null,
+    policyId: null,
+    selectionReason: "no_policy_found",
+    candidatePolicies,
+  };
+}
+
+/** Helper to get all policies from repository */
+function getAllPoliciesFromRepository(
+  repository: PolicyRepository
+): Map<string, PolicyFile> {
+  // If the repository is actually a Map, return it
+  // This is a workaround for the interface limitation
+  if (repository instanceof Map) {
+    return repository as unknown as Map<string, PolicyFile>;
+  }
+
+  // Otherwise, we need to iterate through known IDs
+  // In a real implementation, the repository would have a keys() or values() method
+  const result = new Map<string, PolicyFile>();
+
+  // Try to access internal map if available
+  const anyRepo = repository as unknown as { policies?: Map<string, PolicyFile> };
+  if (anyRepo.policies instanceof Map) {
+    return anyRepo.policies;
+  }
+
+  return result;
+}
+
+/** Check if applies_to matches the asset ID */
+function checkAppliesTo(
+  appliesTo: string[],
+  assetId: string
+): { applies: boolean; isExplicit: boolean } {
+  for (const pattern of appliesTo) {
+    if (pattern === "*") {
+      return { applies: true, isExplicit: false };
+    }
+    if (pattern === assetId) {
+      return { applies: true, isExplicit: true };
+    }
+    // Support wildcard prefixes like "aigrc-2024-*"
+    if (pattern.endsWith("*") && assetId.startsWith(pattern.slice(0, -1))) {
+      return { applies: true, isExplicit: false };
+    }
+  }
+  return { applies: false, isExplicit: false };
+}
+
+/** Score a policy based on criteria */
+function scorePolicy(
+  policy: PolicyFile,
+  criteria: PolicySelectionCriteria,
+  isExplicitMatch: boolean
+): PolicyScore {
+  let total = 0;
+  let explicitMatch = 0;
+  let riskLevelMatch = 0;
+  let tagMatches = 0;
+
+  // Explicit asset match
+  if (isExplicitMatch) {
+    explicitMatch = 100;
+    total += 100;
+  }
+
+  // Check risk level conditions in rules
+  const hasRiskLevelRule = policy.rules.some(rule =>
+    rule.conditions?.risk_levels?.includes(criteria.riskLevel)
+  );
+  if (hasRiskLevelRule) {
+    riskLevelMatch = 50;
+    total += 50;
+  }
+
+  // Check tag matches
+  const policyTags = policy.metadata?.tags ?? [];
+  const criteriaTags = criteria.tags ?? [];
+  for (const tag of criteriaTags) {
+    if (policyTags.includes(tag)) {
+      tagMatches++;
+      total += 10;
+    }
+  }
+
+  // Add priority bonus (if rules have priorities)
+  const maxPriority = Math.max(...policy.rules.map(r => r.priority ?? 0), 0);
+  total += maxPriority;
+
+  return {
+    total,
+    explicitMatch,
+    riskLevelMatch,
+    tagMatches,
+    priority: maxPriority,
+  };
+}
+
+/** Determine the selection reason based on score */
+function determineSelectionReason(
+  appliesToResult: { applies: boolean; isExplicit: boolean },
+  score: PolicyScore
+): PolicySelectionReason {
+  if (appliesToResult.isExplicit) {
+    return "explicit_match";
+  }
+  if (score.riskLevelMatch > 0) {
+    return "risk_level_match";
+  }
+  if (score.tagMatches > 0) {
+    return "tag_match";
+  }
+  return "wildcard_match";
+}
+
+/**
+ * Creates a policy selector with caching for repeated lookups.
+ */
+export interface PolicySelector {
+  /** Select a policy for given criteria */
+  select(criteria: PolicySelectionCriteria): PolicySelectionResult;
+  /** Clear the cache */
+  clearCache(): void;
+  /** Get cache statistics */
+  getCacheStats(): { hits: number; misses: number; size: number };
+}
+
+/**
+ * Creates a policy selector with LRU caching.
+ *
+ * @param repository Policy repository
+ * @param defaultPolicyId Default policy ID
+ * @param cacheSize Maximum cache size (default: 100)
+ * @returns Policy selector
+ */
+export function createPolicySelector(
+  repository: PolicyRepository,
+  defaultPolicyId?: string,
+  cacheSize: number = 100
+): PolicySelector {
+  const cache = new Map<string, PolicySelectionResult>();
+  let hits = 0;
+  let misses = 0;
+
+  function getCacheKey(criteria: PolicySelectionCriteria): string {
+    return `${criteria.assetId}|${criteria.riskLevel}|${criteria.mode}|${(criteria.tags ?? []).sort().join(",")}|${criteria.environment ?? ""}`;
+  }
+
+  function select(criteria: PolicySelectionCriteria): PolicySelectionResult {
+    const key = getCacheKey(criteria);
+
+    // Check cache
+    if (cache.has(key)) {
+      hits++;
+      return cache.get(key)!;
+    }
+
+    misses++;
+
+    // Perform selection
+    const result = selectPolicy(criteria, repository, defaultPolicyId);
+
+    // Add to cache
+    if (cache.size >= cacheSize) {
+      // Remove oldest entry (first key)
+      const firstKey = cache.keys().next().value;
+      if (firstKey) {
+        cache.delete(firstKey);
+      }
+    }
+    cache.set(key, result);
+
+    return result;
+  }
+
+  return {
+    select,
+    clearCache: () => cache.clear(),
+    getCacheStats: () => ({ hits, misses, size: cache.size }),
+  };
+}
