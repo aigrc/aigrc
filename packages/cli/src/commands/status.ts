@@ -5,6 +5,8 @@ import fs from "fs/promises";
 import {
   loadAssetCard,
   classifyRisk,
+  extractGoldenThreadComponents,
+  verifyGoldenThreadHashSync,
   type AssetCard,
   type ClassificationResult,
 } from "@aigrc/core";
@@ -109,6 +111,10 @@ async function runStatus(options: StatusCommandOptions): Promise<void> {
 
   console.log(chalk.dim("Config:"), configExists ? chalk.green("✓") : chalk.red("✗"), configPath);
   console.log(chalk.dim("Cards:"), cardsDirExists ? chalk.green("✓") : chalk.red("✗"), cardsDir);
+  console.log();
+
+  // Show Golden Thread status for cards with Golden Thread
+  printGoldenThreadStatus(cards);
   console.log();
 
   if (cards.length === 0) {
@@ -256,5 +262,59 @@ async function directoryExists(dirPath: string): Promise<boolean> {
     return stat.isDirectory();
   } catch {
     return false;
+  }
+}
+
+/**
+ * Print Golden Thread status for cards (AIG-100)
+ */
+function printGoldenThreadStatus(
+  cards: Array<{
+    path: string;
+    card: AssetCard;
+    classification: ClassificationResult;
+  }>
+): void {
+  const cardsWithGoldenThread = cards.filter((c) => {
+    const components = extractGoldenThreadComponents(c.card);
+    return components && c.card.golden_thread?.hash;
+  });
+
+  if (cardsWithGoldenThread.length === 0) {
+    return;
+  }
+
+  console.log(chalk.bold("Golden Thread"));
+  console.log(chalk.dim("─".repeat(50)));
+  console.log();
+
+  for (const { card } of cardsWithGoldenThread) {
+    const components = extractGoldenThreadComponents(card);
+    if (!components || !card.golden_thread?.hash) continue;
+
+    console.log(chalk.bold(card.name));
+    console.log(chalk.dim(`  Hash: ${card.golden_thread.hash}`));
+
+    // Verify hash
+    try {
+      const verification = verifyGoldenThreadHashSync(components, card.golden_thread.hash);
+      if (verification.verified) {
+        console.log(chalk.dim("  Status: ") + chalk.green("✓ Verified"));
+      } else {
+        console.log(chalk.dim("  Status: ") + chalk.red("✗ Verification Failed"));
+        if (verification.mismatch_reason) {
+          console.log(chalk.dim("  Reason: ") + chalk.yellow(verification.mismatch_reason));
+        }
+      }
+    } catch (error) {
+      console.log(chalk.dim("  Status: ") + chalk.red("✗ Error"));
+    }
+
+    // Show signature if present
+    if (card.golden_thread?.signature) {
+      console.log(chalk.dim("  Signature: ") + chalk.green("✓ RSA-SHA256"));
+    }
+
+    console.log();
   }
 }

@@ -62,7 +62,7 @@ describe("Kill Switch", () => {
   describe("createKillSwitch", () => {
     it("should create handler with ACTIVE state", () => {
       const identity = createMockIdentity();
-      const config: KillSwitchConfig = { channel: "polling" };
+      const config: KillSwitchConfig = { channel: "polling", endpoint: "http://localhost:9999/kill-switch" };
 
       const handler = createKillSwitch(identity, config);
 
@@ -70,11 +70,13 @@ describe("Kill Switch", () => {
       expect(handler.shouldContinue()).toBe(true);
     });
 
-    it("should process TERMINATE command", () => {
+    it("should process TERMINATE command", async () => {
       const identity = createMockIdentity();
       let stateChangeCalled = false;
       const config: KillSwitchConfig = {
         channel: "polling",
+        endpoint: "http://localhost:9999/kill-switch",
+        requireSignature: false, // Disable for testing
         onStateChange: (state) => {
           stateChangeCalled = true;
           expect(state).toBe("TERMINATED");
@@ -88,7 +90,7 @@ describe("Kill Switch", () => {
         instanceId: TEST_INSTANCE_ID,
       });
 
-      const result = handler.processCommand(command);
+      const result = await handler.processCommand(command);
 
       expect(result).toBe(true);
       expect(handler.state).toBe("TERMINATED");
@@ -96,9 +98,9 @@ describe("Kill Switch", () => {
       expect(stateChangeCalled).toBe(true);
     });
 
-    it("should process PAUSE command", () => {
+    it("should process PAUSE command", async () => {
       const identity = createMockIdentity();
-      const config: KillSwitchConfig = { channel: "polling" };
+      const config: KillSwitchConfig = { channel: "polling", endpoint: "http://localhost:9999/kill-switch", requireSignature: false };
 
       const handler = createKillSwitch(identity, config);
       const command = createKillSwitchCommand("PAUSE", {
@@ -106,20 +108,20 @@ describe("Kill Switch", () => {
         issuedBy: "admin@test.com",
       });
 
-      handler.processCommand(command);
+      await handler.processCommand(command);
 
       expect(handler.state).toBe("PAUSED");
       expect(handler.shouldContinue()).toBe(false);
     });
 
-    it("should process RESUME command", () => {
+    it("should process RESUME command", async () => {
       const identity = createMockIdentity();
-      const config: KillSwitchConfig = { channel: "polling" };
+      const config: KillSwitchConfig = { channel: "polling", endpoint: "http://localhost:9999/kill-switch", requireSignature: false };
 
       const handler = createKillSwitch(identity, config);
 
       // First pause
-      handler.processCommand(
+      await handler.processCommand(
         createKillSwitchCommand("PAUSE", {
           reason: "Pause",
           issuedBy: "admin@test.com",
@@ -128,7 +130,7 @@ describe("Kill Switch", () => {
       expect(handler.state).toBe("PAUSED");
 
       // Then resume
-      handler.processCommand(
+      await handler.processCommand(
         createKillSwitchCommand("RESUME", {
           reason: "Resume operations",
           issuedBy: "admin@test.com",
@@ -138,14 +140,14 @@ describe("Kill Switch", () => {
       expect(handler.shouldContinue()).toBe(true);
     });
 
-    it("should not allow RESUME from TERMINATED state", () => {
+    it("should not allow RESUME from TERMINATED state", async () => {
       const identity = createMockIdentity();
-      const config: KillSwitchConfig = { channel: "polling" };
+      const config: KillSwitchConfig = { channel: "polling", endpoint: "http://localhost:9999/kill-switch", requireSignature: false };
 
       const handler = createKillSwitch(identity, config);
 
       // Terminate
-      handler.processCommand(
+      await handler.processCommand(
         createKillSwitchCommand("TERMINATE", {
           reason: "Terminated",
           issuedBy: "admin@test.com",
@@ -153,7 +155,7 @@ describe("Kill Switch", () => {
       );
 
       // Try to resume
-      handler.processCommand(
+      await handler.processCommand(
         createKillSwitchCommand("RESUME", {
           reason: "Trying to resume",
           issuedBy: "admin@test.com",
@@ -163,9 +165,9 @@ describe("Kill Switch", () => {
       expect(handler.state).toBe("TERMINATED"); // Should stay terminated
     });
 
-    it("should reject duplicate commands (replay protection)", () => {
+    it("should reject duplicate commands (replay protection)", async () => {
       const identity = createMockIdentity();
-      const config: KillSwitchConfig = { channel: "polling" };
+      const config: KillSwitchConfig = { channel: "polling", endpoint: "http://localhost:9999/kill-switch", requireSignature: false };
 
       const handler = createKillSwitch(identity, config);
       const command = createKillSwitchCommand("PAUSE", {
@@ -173,16 +175,16 @@ describe("Kill Switch", () => {
         issuedBy: "admin@test.com",
       });
 
-      const firstResult = handler.processCommand(command);
-      const secondResult = handler.processCommand(command);
+      const firstResult = await handler.processCommand(command);
+      const secondResult = await handler.processCommand(command);
 
       expect(firstResult).toBe(true);
       expect(secondResult).toBe(false);
     });
 
-    it("should only apply commands targeting this instance", () => {
+    it("should only apply commands targeting this instance", async () => {
       const identity = createMockIdentity({ instance_id: TEST_INSTANCE_ID });
-      const config: KillSwitchConfig = { channel: "polling" };
+      const config: KillSwitchConfig = { channel: "polling", endpoint: "http://localhost:9999/kill-switch", requireSignature: false };
 
       const handler = createKillSwitch(identity, config);
 
@@ -193,15 +195,15 @@ describe("Kill Switch", () => {
         instanceId: OTHER_INSTANCE_ID,
       });
 
-      const result = handler.processCommand(command);
+      const result = await handler.processCommand(command);
 
       expect(result).toBe(false);
       expect(handler.state).toBe("ACTIVE");
     });
 
-    it("should apply commands targeting this asset", () => {
+    it("should apply commands targeting this asset", async () => {
       const identity = createMockIdentity({ asset_id: TEST_ASSET_ID });
-      const config: KillSwitchConfig = { channel: "polling" };
+      const config: KillSwitchConfig = { channel: "polling", endpoint: "http://localhost:9999/kill-switch", requireSignature: false };
 
       const handler = createKillSwitch(identity, config);
 
@@ -211,15 +213,15 @@ describe("Kill Switch", () => {
         assetId: TEST_ASSET_ID,
       });
 
-      const result = handler.processCommand(command);
+      const result = await handler.processCommand(command);
 
       expect(result).toBe(true);
       expect(handler.state).toBe("TERMINATED");
     });
 
-    it("should reject commands without valid signature", () => {
+    it("should reject commands without valid signature", async () => {
       const identity = createMockIdentity();
-      const config: KillSwitchConfig = { channel: "polling" };
+      const config: KillSwitchConfig = { channel: "polling", endpoint: "http://localhost:9999/kill-switch" };
 
       const handler = createKillSwitch(identity, config);
 
@@ -232,15 +234,15 @@ describe("Kill Switch", () => {
         issued_by: "admin@test.com",
       };
 
-      const result = handler.processCommand(command);
+      const result = await handler.processCommand(command);
 
       expect(result).toBe(false);
       expect(handler.state).toBe("ACTIVE");
     });
 
-    it("should store last command", () => {
+    it("should store last command", async () => {
       const identity = createMockIdentity();
-      const config: KillSwitchConfig = { channel: "polling" };
+      const config: KillSwitchConfig = { channel: "polling", endpoint: "http://localhost:9999/kill-switch", requireSignature: false };
 
       const handler = createKillSwitch(identity, config);
 
@@ -251,16 +253,18 @@ describe("Kill Switch", () => {
         issuedBy: "admin@test.com",
       });
 
-      handler.processCommand(command);
+      await handler.processCommand(command);
 
       expect(handler.getLastCommand()).toBeDefined();
       expect(handler.getLastCommand()?.reason).toBe("Pause for review");
     });
 
-    it("should support custom verification", () => {
+    it("should support custom verification", async () => {
       const identity = createMockIdentity();
       const config: KillSwitchConfig = {
         channel: "polling",
+        endpoint: "http://localhost:9999/kill-switch",
+        requireSignature: false,
         verifyCommand: (cmd) => {
           // Only accept commands from specific issuer
           return cmd.issued_by === "trusted@admin.com";
@@ -275,7 +279,7 @@ describe("Kill Switch", () => {
         issuedBy: "hacker@evil.com",
       });
 
-      expect(handler.processCommand(untrustedCmd)).toBe(false);
+      expect(await handler.processCommand(untrustedCmd)).toBe(false);
 
       // Trusted command
       const trustedCmd = createKillSwitchCommand("TERMINATE", {
@@ -283,7 +287,7 @@ describe("Kill Switch", () => {
         issuedBy: "trusted@admin.com",
       });
 
-      expect(handler.processCommand(trustedCmd)).toBe(true);
+      expect(await handler.processCommand(trustedCmd)).toBe(true);
       expect(handler.state).toBe("TERMINATED");
     });
   });

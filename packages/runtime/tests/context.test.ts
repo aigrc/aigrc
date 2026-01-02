@@ -176,11 +176,11 @@ describe("Runtime Context", () => {
       expect(result.requiresAudit).toBe(true);
     });
 
-    it("should deny all when kill switch is triggered", () => {
+    it("should deny all when kill switch is triggered", async () => {
       const identity = createMockIdentity();
       const context = createRuntimeContext({
         identity,
-        killSwitch: { channel: "polling" },
+        killSwitch: { channel: "polling", endpoint: "http://localhost:9999/kill-switch", requireSignature: false },
       });
 
       // Start and manually trigger kill switch
@@ -191,7 +191,7 @@ describe("Runtime Context", () => {
         reason: "Emergency",
         issuedBy: "admin@test.com",
       });
-      context.killSwitch!.processCommand(cmd);
+      await context.killSwitch!.processCommand(cmd);
 
       // Now check action
       const result = context.checkAction("read_file", "/path");
@@ -292,7 +292,7 @@ describe("Runtime Context", () => {
       const identity = createMockIdentity();
       const context = createRuntimeContext({
         identity,
-        killSwitch: { channel: "polling" },
+        killSwitch: { channel: "polling", endpoint: "http://localhost:9999/kill-switch" },
       });
 
       expect(() => context.start()).not.toThrow();

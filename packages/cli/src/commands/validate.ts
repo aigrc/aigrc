@@ -3,6 +3,7 @@ import chalk from "chalk";
 import ora from "ora";
 import path from "path";
 import fs from "fs/promises";
+import YAML from "yaml";
 import {
   loadAssetCard,
   classifyRisk,
@@ -11,15 +12,22 @@ import {
   type ClassificationResult,
 } from "@aigrc/core";
 import { printHeader } from "../utils/output.js";
+import { ExitCode, exit } from "../utils/exit-codes.js";
+import { formatSarif, sarifToJson, type ValidationResult as SarifValidationResult } from "../formatters/sarif.js";
+import { printValidationSummary as printTextSummary, type ValidationResult as TextValidationResult } from "../formatters/text.js";
+import { autoFixAssetCard } from "../fixers/auto-fix.js";
 
 // ─────────────────────────────────────────────────────────────────
-// VALIDATE COMMAND
+// VALIDATE COMMAND (Enhanced for AIG-97, AIG-98, AIG-99)
 // ─────────────────────────────────────────────────────────────────
 
 interface ValidateCommandOptions {
   strict?: boolean;
-  output?: "text" | "json";
+  output?: "text" | "json" | "sarif";
   all?: boolean;
+  fix?: boolean;
+  dryRun?: boolean;
+  outputFile?: string;
 }
 
 const DEFAULT_CARDS_DIR = ".aigrc/cards";
@@ -28,8 +36,11 @@ export const validateCommand = new Command("validate")
   .description("Validate asset cards against compliance requirements")
   .argument("[path]", "Path to asset card or cards directory")
   .option("-s, --strict", "Fail on warnings as well as errors")
-  .option("-o, --output <format>", "Output format (text, json)", "text")
+  .option("-o, --output <format>", "Output format (text, json, sarif)", "text")
   .option("-a, --all", "Validate all cards in the cards directory")
+  .option("--fix", "Automatically fix common issues")
+  .option("--dry-run", "Preview fixes without saving (requires --fix)")
+  .option("--output-file <path>", "Write output to file instead of stdout")
   .action(async (cardPath: string | undefined, options: ValidateCommandOptions) => {
     await runValidate(cardPath, options);
   });
@@ -38,7 +49,17 @@ async function runValidate(
   cardPath: string | undefined,
   options: ValidateCommandOptions
 ): Promise<void> {
-  if (options.output === "text") {
+  // Validate options
+  if (options.dryRun && !options.fix) {
+    if (options.output === "text") {
+      console.error(chalk.red("Error: --dry-run requires --fix"));
+    } else {
+      console.error(JSON.stringify({ error: "--dry-run requires --fix" }));
+    }
+    exit(ExitCode.INVALID_ARGUMENTS);
+  }
+
+  if (options.output === "text" && !options.outputFile) {
     printHeader();
   }
 
@@ -55,27 +76,53 @@ async function runValidate(
       for (const file of yamlFiles) {
         cardsToValidate.push(path.join(cardsDir, file));
       }
-    } catch {
-      if (options.output === "text") {
+    } catch (error) {
+      if (options.output === "text" && !options.outputFile) {
         console.log(chalk.yellow("No cards directory found."));
         console.log(chalk.dim(`Expected: ${cardsDir}`));
         console.log(chalk.dim("Run `aigrc init` to initialize AIGRC."));
       } else {
-        console.log(JSON.stringify({ error: "No cards directory found" }));
+        const output = JSON.stringify({ error: "No cards directory found" });
+        if (options.outputFile) {
+          await fs.writeFile(options.outputFile, output);
+        } else {
+          console.log(output);
+        }
       }
-      process.exit(1);
+      exit(ExitCode.FILE_NOT_FOUND);
     }
   } else {
-    cardsToValidate.push(path.resolve(process.cwd(), cardPath));
+    const resolvedPath = path.resolve(process.cwd(), cardPath);
+    try {
+      await fs.access(resolvedPath);
+      cardsToValidate.push(resolvedPath);
+    } catch {
+      if (options.output === "text" && !options.outputFile) {
+        console.log(chalk.red(`Error: File not found: ${cardPath}`));
+      } else {
+        const output = JSON.stringify({ error: `File not found: ${cardPath}` });
+        if (options.outputFile) {
+          await fs.writeFile(options.outputFile, output);
+        } else {
+          console.log(output);
+        }
+      }
+      exit(ExitCode.FILE_NOT_FOUND);
+    }
   }
 
   if (cardsToValidate.length === 0) {
-    if (options.output === "text") {
+    if (options.output === "text" && !options.outputFile) {
       console.log(chalk.yellow("No asset cards found to validate."));
     } else {
-      console.log(JSON.stringify({ error: "No asset cards found" }));
+      const output = JSON.stringify({ error: "No asset cards found" });
+      if (options.outputFile) {
+        await fs.writeFile(options.outputFile, output);
+      } else {
+        console.log(output);
+      }
     }
-    process.exit(1);
+    exit(ExitCode.FILE_NOT_FOUND);
   }
 
   interface ValidationResult {
@@ -88,17 +135,38 @@ async function runValidate(
     card?: AssetCard;
     validation: ValidationResult;
     classification?: ClassificationResult;
+    fixed?: boolean;
+    fixedFields?: string[];
   }> = [];
 
   let hasErrors = false;
 
   for (const cardFile of cardsToValidate) {
-    const spinner = options.output === "text"
+    const spinner = options.output === "text" && !options.outputFile
       ? ora(`Validating ${path.basename(cardFile)}...`).start()
       : undefined;
 
     try {
-      const card = loadAssetCard(cardFile);
+      let card = loadAssetCard(cardFile);
+      let fixed = false;
+      let fixedFields: string[] = [];
+
+      // Apply auto-fix if requested
+      if (options.fix) {
+        const fixResult = autoFixAssetCard(card);
+        if (fixResult.fixed) {
+          fixed = true;
+          fixedFields = fixResult.fixedFields;
+          card = fixResult.card;
+
+          // Save fixed card unless dry-run
+          if (!options.dryRun) {
+            const yamlContent = YAML.stringify(card);
+            await fs.writeFile(cardFile, yamlContent, "utf-8");
+          }
+        }
+      }
+
       const validation = validateAssetCard(card);
       const classification = classifyRisk(card.classification.riskFactors);
 
@@ -110,11 +178,15 @@ async function runValidate(
           errors: validation.errors ?? [],
         },
         classification,
+        fixed,
+        fixedFields,
       });
 
       if (!validation.valid) {
         hasErrors = true;
         spinner?.fail(`${path.basename(cardFile)}: Invalid`);
+      } else if (fixed) {
+        spinner?.succeed(`${path.basename(cardFile)}: Valid (fixed ${fixedFields.length} issues)`);
       } else {
         spinner?.succeed(`${path.basename(cardFile)}: Valid`);
       }
@@ -135,87 +207,111 @@ async function runValidate(
     }
   }
 
-  // Output results
-  if (options.output === "json") {
-    console.log(JSON.stringify({ results }, null, 2));
-  } else {
-    console.log();
-    printValidationSummary(results);
-  }
+  // Format and output results
+  await outputResults(results, options);
 
-  // Exit code
+  // Exit with appropriate code
   if (hasErrors) {
-    process.exit(1);
+    exit(ExitCode.VALIDATION_ERRORS);
   }
+  exit(ExitCode.SUCCESS);
 }
 
-function printValidationSummary(
+async function outputResults(
   results: Array<{
     path: string;
     card?: AssetCard;
     validation: { valid: boolean; errors: string[] };
     classification?: ClassificationResult;
+    fixed?: boolean;
+    fixedFields?: string[];
+  }>,
+  options: ValidateCommandOptions
+): Promise<void> {
+  let output: string;
+
+  switch (options.output) {
+    case "sarif": {
+      const sarif = formatSarif(results);
+      output = sarifToJson(sarif);
+      break;
+    }
+    case "json": {
+      output = JSON.stringify({ results }, null, 2);
+      break;
+    }
+    case "text":
+    default: {
+      if (options.outputFile) {
+        // For text output to file, create a simple text representation
+        output = formatTextOutput(results);
+      } else {
+        // For stdout, use the fancy formatted output
+        console.log();
+        printTextSummary(results);
+        return;
+      }
+    }
+  }
+
+  // Write to file or stdout
+  if (options.outputFile) {
+    await fs.writeFile(options.outputFile, output, "utf-8");
+    if (options.output === "text") {
+      console.log(chalk.green(`✓ Output written to ${options.outputFile}`));
+    }
+  } else {
+    console.log(output);
+  }
+}
+
+function formatTextOutput(
+  results: Array<{
+    path: string;
+    card?: AssetCard;
+    validation: { valid: boolean; errors: string[] };
+    classification?: ClassificationResult;
+    fixed?: boolean;
+    fixedFields?: string[];
   }>
-): void {
-  console.log(chalk.bold("Validation Summary"));
-  console.log(chalk.dim("─".repeat(50)));
-  console.log();
+): string {
+  const lines: string[] = [];
+  lines.push("Validation Summary");
+  lines.push("─".repeat(50));
+  lines.push("");
 
   for (const result of results) {
     const fileName = path.basename(result.path);
 
     if (!result.validation.valid) {
-      console.log(chalk.red(`✗ ${fileName}`));
-
+      lines.push(`✗ ${fileName}`);
       for (const error of result.validation.errors) {
-        console.log(chalk.red(`    Error: ${error}`));
+        lines.push(`    Error: ${error}`);
       }
     } else {
-      console.log(chalk.green(`✓ ${fileName}`));
-
+      lines.push(`✓ ${fileName}`);
+      if (result.fixed && result.fixedFields && result.fixedFields.length > 0) {
+        lines.push(`    Fixed: ${result.fixedFields.join(", ")}`);
+      }
       if (result.card && result.classification) {
-        const tierColor = getRiskLevelColor(result.classification.riskLevel);
-        console.log(
-          chalk.dim("    Risk Level: ") +
-            tierColor(result.classification.riskLevel)
-        );
-
+        lines.push(`    Risk Level: ${result.classification.riskLevel}`);
         if (result.classification.euAiActCategory) {
-          console.log(
-            chalk.dim("    EU AI Act: ") +
-              chalk.yellow(result.classification.euAiActCategory)
-          );
+          lines.push(`    EU AI Act: ${result.classification.euAiActCategory}`);
         }
       }
     }
-
-    console.log();
+    lines.push("");
   }
 
-  // Summary counts
   const valid = results.filter((r) => r.validation.valid).length;
   const invalid = results.filter((r) => !r.validation.valid).length;
+  const fixed = results.filter((r) => r.fixed).length;
 
-  console.log(chalk.dim("─".repeat(50)));
-  console.log(
-    `Total: ${results.length} | ` +
-      chalk.green(`Valid: ${valid}`) +
-      ` | ` +
-      chalk.red(`Invalid: ${invalid}`)
+  lines.push("─".repeat(50));
+  lines.push(
+    `Total: ${results.length} | Valid: ${valid} | Invalid: ${invalid}` +
+      (fixed > 0 ? ` | Fixed: ${fixed}` : "")
   );
-}
 
-function getRiskLevelColor(level: string): (text: string) => string {
-  switch (level) {
-    case "minimal":
-      return chalk.green;
-    case "limited":
-      return chalk.yellow;
-    case "high":
-      return chalk.red;
-    case "unacceptable":
-      return chalk.magenta;
-    default:
-      return chalk.white;
-  }
+  return lines.join("\n");
 }

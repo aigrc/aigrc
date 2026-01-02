@@ -36,6 +36,12 @@
   "license": "MIT",
   "dependencies": {
     "@aigrc/core": "workspace:*",
+    "zod": "^3.22.4",
+    "@opentelemetry/api": "^1.7.0",
+    "@opentelemetry/sdk-trace-base": "^1.30.0",
+    "@opentelemetry/sdk-trace-node": "^1.30.0",
+    "@opentelemetry/semantic-conventions": "^1.30.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.57.0",
     "jose": "^5.2.0"
   },
   "devDependencies": {

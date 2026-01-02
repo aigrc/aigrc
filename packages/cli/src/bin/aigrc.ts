@@ -5,6 +5,7 @@ import { registerCommand } from "../commands/register.js";
 import { validateCommand } from "../commands/validate.js";
 import { statusCommand } from "../commands/status.js";
 import { hashCommand } from "../commands/hash.js";
+import { versionCommand } from "../commands/version.js";
 // Multi-jurisdiction compliance commands
 import { complianceCommand } from "../commands/compliance.js";
 import { classifyCommand } from "../commands/classify.js";
@@ -24,6 +25,7 @@ program.addCommand(registerCommand);
 program.addCommand(validateCommand);
 program.addCommand(statusCommand);
 program.addCommand(hashCommand);
+program.addCommand(versionCommand);
 
 // Multi-jurisdiction compliance commands
 program.addCommand(complianceCommand);

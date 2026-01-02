@@ -9,6 +9,7 @@ export { registerCommand } from "./register.js";
 export { validateCommand } from "./validate.js";
 export { statusCommand } from "./status.js";
 export { hashCommand } from "./hash.js";
+export { versionCommand } from "./version.js";
 
 // Multi-jurisdiction compliance commands
 export { complianceCommand } from "./compliance.js";

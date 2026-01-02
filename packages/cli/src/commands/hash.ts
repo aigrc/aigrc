@@ -13,8 +13,8 @@ import {
 import { printHeader } from "../utils/output.js";
 
 // ─────────────────────────────────────────────────────────────────
-// HASH COMMAND (AIG-36)
-// Compute and verify Golden Thread hashes
+// HASH COMMAND (AIG-102)
+// Compute and verify Golden Thread hashes with simplified output
 // ─────────────────────────────────────────────────────────────────
 
 interface HashCommandOptions {
@@ -221,22 +221,28 @@ function outputResult(result: HashResult, format?: "text" | "json"): void {
     return;
   }
 
-  console.log();
+  // Simplified text output for AIG-102
   if (result.success) {
     if (result.verified !== undefined) {
-      console.log(chalk.green("  Verification: ") + (result.verified ? chalk.green("PASSED") : chalk.red("FAILED")));
-    }
-    if (result.canonical_string) {
-      console.log(chalk.cyan("  Canonical String: ") + result.canonical_string);
-    }
-    if (result.hash) {
-      console.log(chalk.cyan("  Hash: ") + result.hash);
-    }
-    if (result.expected_hash && result.expected_hash !== result.hash) {
-      console.log(chalk.yellow("  Expected Hash: ") + result.expected_hash);
+      // For --verify mode
+      if (result.verified) {
+        console.log(chalk.green("✓ Golden Thread hash verified"));
+      } else {
+        console.log(chalk.red("✗ Golden Thread hash verification failed"));
+        if (result.expected_hash) {
+          console.log(chalk.dim(`Expected: ${result.expected_hash}`));
+        }
+        if (result.hash) {
+          console.log(chalk.dim(`Computed: ${result.hash}`));
+        }
+      }
+    } else {
+      // For compute mode - just print the hash
+      if (result.hash) {
+        console.log(result.hash);
+      }
     }
   } else {
-    console.log(chalk.red("  Error: ") + result.error);
+    console.log(chalk.red("Error: ") + result.error);
   }
-  console.log();
 }
