@@ -12,11 +12,13 @@ import { classifyCommand } from "../commands/classify.js";
 import { checkCommand } from "../commands/check.js";
 import { generateCommand } from "../commands/generate.js";
 import { reportCommand } from "../commands/report.js";
+// I2E Policy Bridge commands
+import { policyCommand } from "../commands/policy.js";
 
 program
   .name("aigrc")
   .description("AI Governance, Risk, Compliance - CLI Tool")
-  .version("0.1.0");
+  .version("0.2.0");
 
 // Core commands
 program.addCommand(scanCommand);
@@ -33,5 +35,8 @@ program.addCommand(classifyCommand);
 program.addCommand(checkCommand);
 program.addCommand(generateCommand);
 program.addCommand(reportCommand);
+
+// I2E Policy Bridge commands
+program.addCommand(policyCommand);
 
 program.parse();

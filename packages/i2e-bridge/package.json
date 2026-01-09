@@ -58,7 +58,9 @@
     "clean": "rimraf dist"
   },
   "dependencies": {
-    "@aigrc/core": "^0.1.0",
+    "@aigrc/core": "^0.2.0",
+    "mammoth": "^1.8.0",
+    "pdf-parse": "^1.1.1",
     "yaml": "^2.3.4",
     "zod": "^3.22.4"
   },

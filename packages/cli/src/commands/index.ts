@@ -17,3 +17,6 @@ export { classifyCommand } from "./classify.js";
 export { checkCommand } from "./check.js";
 export { generateCommand } from "./generate.js";
 export { reportCommand } from "./report.js";
+
+// I2E Policy Bridge commands
+export { policyCommand } from "./policy.js";

@@ -24,6 +24,9 @@ export enum ExitCode {
 
   /** Permission denied */
   PERMISSION_DENIED = 5,
+
+  /** Runtime error during execution */
+  RUNTIME_ERROR = 6,
 }
 
 /**

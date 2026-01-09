@@ -45,6 +45,12 @@ export {
   createSuccessResult,
   createErrorResult,
   ManualExtractor,
+  PdfExtractor,
+  pdfExtractor,
+  DocxExtractor,
+  docxExtractor,
+  UrlExtractor,
+  urlExtractor,
 } from "./extractors";
 
 // Compiler
