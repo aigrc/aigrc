@@ -1,14 +1,14 @@
 {
-  "name": "@aigrc/core",
+  "name": "@aigrc/i2e-bridge",
   "version": "0.1.0",
-  "description": "Core logic for AIGRC - schemas, validation, risk classification",
+  "description": "I2E Policy Bridge - Document ingestion and policy compilation for AIGRC",
   "license": "Apache-2.0",
   "author": "AIGRC <contact@aigrc.dev>",
   "homepage": "https://github.com/aigrc/aigrc#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/aigrc/aigrc.git",
-    "directory": "packages/core"
+    "directory": "packages/i2e-bridge"
   },
   "bugs": {
     "url": "https://github.com/aigrc/aigrc/issues"
@@ -16,14 +16,11 @@
   "keywords": [
     "aigrc",
     "ai-governance",
-    "risk-management",
-    "compliance",
-    "eu-ai-act",
-    "nist-ai-rmf",
-    "iso-42001",
-    "schemas",
-    "validation",
-    "zod"
+    "i2e",
+    "policy-compiler",
+    "document-ingestion",
+    "pdf",
+    "constraint-extraction"
   ],
   "engines": {
     "node": ">=18.0.0"
@@ -31,6 +28,7 @@
   "publishConfig": {
     "access": "public"
   },
+  "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -40,20 +38,15 @@
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
     },
-    "./schemas": {
-      "types": "./dist/schemas/index.d.ts",
-      "import": "./dist/schemas/index.mjs",
-      "require": "./dist/schemas/index.js"
+    "./extractors": {
+      "types": "./dist/extractors/index.d.ts",
+      "import": "./dist/extractors/index.mjs",
+      "require": "./dist/extractors/index.js"
     },
-    "./air": {
-      "types": "./dist/air/index.d.ts",
-      "import": "./dist/air/index.mjs",
-      "require": "./dist/air/index.js"
-    },
-    "./governance-lock": {
-      "types": "./dist/governance-lock/index.d.ts",
-      "import": "./dist/governance-lock/index.mjs",
-      "require": "./dist/governance-lock/index.js"
+    "./compiler": {
+      "types": "./dist/compiler/index.d.ts",
+      "import": "./dist/compiler/index.mjs",
+      "require": "./dist/compiler/index.js"
     }
   },
   "files": ["dist"],
@@ -65,9 +58,9 @@
     "clean": "rimraf dist"
   },
   "dependencies": {
+    "@aigrc/core": "^0.1.0",
     "yaml": "^2.3.4",
-    "zod": "^3.22.4",
-    "zod-to-json-schema": "^3.22.0"
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

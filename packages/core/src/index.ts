@@ -24,5 +24,11 @@ export * from "./config";
 // Policy engine
 export * from "./policy";
 
+// AIR (AIGRC Intermediate Representation)
+export * from "./air";
+
+// Governance Lock (policy version pinning)
+export * from "./governance-lock";
+
 // Utilities
 export * from "./utils";
