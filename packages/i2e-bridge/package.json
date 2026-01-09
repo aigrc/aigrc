@@ -28,25 +28,24 @@
   "publishConfig": {
     "access": "public"
   },
-  "type": "module",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
     },
     "./extractors": {
       "types": "./dist/extractors/index.d.ts",
-      "import": "./dist/extractors/index.js",
-      "require": "./dist/extractors/index.cjs"
+      "import": "./dist/extractors/index.mjs",
+      "require": "./dist/extractors/index.js"
     },
     "./compiler": {
       "types": "./dist/compiler/index.d.ts",
-      "import": "./dist/compiler/index.js",
-      "require": "./dist/compiler/index.cjs"
+      "import": "./dist/compiler/index.mjs",
+      "require": "./dist/compiler/index.js"
     }
   },
   "files": ["dist"],

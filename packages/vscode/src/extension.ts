@@ -4,8 +4,11 @@ import { initCommand } from "./commands/init";
 import { statusCommand } from "./commands/status";
 import { validateCommand } from "./commands/validate";
 import { createCardCommand } from "./commands/createCard";
+import { checkPolicyCommand } from "./commands/checkPolicy";
 import { AssetTreeProvider } from "./views/assetTree";
 import { DiagnosticProvider } from "./providers/diagnostics";
+import { PolicyDiagnosticProvider } from "./providers/policyDiagnostics";
+import { PolicyCodeActionProvider } from "./providers/codeActions";
 import { CodeLensProvider } from "./providers/codeLens";
 
 // ─────────────────────────────────────────────────────────────────
@@ -13,6 +16,7 @@ import { CodeLensProvider } from "./providers/codeLens";
 // ─────────────────────────────────────────────────────────────────
 
 let diagnosticProvider: DiagnosticProvider | undefined;
+let policyDiagnosticProvider: PolicyDiagnosticProvider | undefined;
 let assetTreeProvider: AssetTreeProvider | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
@@ -20,6 +24,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Initialize providers
   diagnosticProvider = new DiagnosticProvider();
+  policyDiagnosticProvider = new PolicyDiagnosticProvider();
   assetTreeProvider = new AssetTreeProvider(context);
 
   // Register tree view
@@ -35,7 +40,28 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("aigrc.init", () => initCommand(context)),
     vscode.commands.registerCommand("aigrc.showStatus", () => statusCommand(context)),
     vscode.commands.registerCommand("aigrc.validateCard", () => validateCommand(context)),
-    vscode.commands.registerCommand("aigrc.createCard", () => createCardCommand(context))
+    vscode.commands.registerCommand("aigrc.createCard", () => createCardCommand(context)),
+    vscode.commands.registerCommand("aigrc.checkPolicy", () => checkPolicyCommand(context, policyDiagnosticProvider!)),
+    vscode.commands.registerCommand("aigrc.showApprovedAlternatives", (violation) => {
+      if (violation?.alternatives) {
+        vscode.window.showQuickPick(violation.alternatives, {
+          title: `Approved alternatives for "${violation.violatingValue}"`,
+          placeHolder: "Select an approved alternative",
+        });
+      }
+    }),
+    vscode.commands.registerCommand("aigrc.requestApproval", async (violation) => {
+      const reason = await vscode.window.showInputBox({
+        title: `Request approval for "${violation?.violatingValue}"`,
+        prompt: "Enter a reason for this approval request",
+        placeHolder: "Business justification...",
+      });
+      if (reason) {
+        vscode.window.showInformationMessage(
+          `Approval request submitted for "${violation?.violatingValue}". Check with your governance team.`
+        );
+      }
+    })
   );
 
   // Register code lens provider for YAML asset cards
@@ -47,8 +73,27 @@ export function activate(context: vscode.ExtensionContext) {
     )
   );
 
-  // Activate diagnostics provider
+  // Register code action provider for policy violations
+  const policyCodeActionProvider = new PolicyCodeActionProvider();
+  context.subscriptions.push(
+    vscode.languages.registerCodeActionsProvider(
+      [
+        { scheme: "file", language: "typescript" },
+        { scheme: "file", language: "javascript" },
+        { scheme: "file", language: "typescriptreact" },
+        { scheme: "file", language: "javascriptreact" },
+        { scheme: "file", language: "python" },
+      ],
+      policyCodeActionProvider,
+      {
+        providedCodeActionKinds: PolicyCodeActionProvider.providedCodeActionKinds,
+      }
+    )
+  );
+
+  // Activate diagnostics providers
   diagnosticProvider.activate(context);
+  policyDiagnosticProvider.activate(context);
 
   // Check if workspace is initialized
   checkInitialization(context);
@@ -57,6 +102,11 @@ export function activate(context: vscode.ExtensionContext) {
   const config = vscode.workspace.getConfiguration("aigrc");
   if (config.get<boolean>("autoScan", true)) {
     vscode.commands.executeCommand("aigrc.scan");
+  }
+
+  // Auto-check policy if enabled and governance.lock exists
+  if (config.get<boolean>("showPolicyViolations", true)) {
+    vscode.commands.executeCommand("aigrc.checkPolicy");
   }
 
   // Watch for file changes
@@ -72,6 +122,9 @@ export function activate(context: vscode.ExtensionContext) {
 export function deactivate() {
   if (diagnosticProvider) {
     diagnosticProvider.dispose();
+  }
+  if (policyDiagnosticProvider) {
+    policyDiagnosticProvider.dispose();
   }
 }
 

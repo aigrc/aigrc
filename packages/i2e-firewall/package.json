@@ -28,30 +28,29 @@
   "publishConfig": {
     "access": "public"
   },
-  "type": "module",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
     },
     "./checkers": {
       "types": "./dist/checkers/index.d.ts",
-      "import": "./dist/checkers/index.js",
-      "require": "./dist/checkers/index.cjs"
+      "import": "./dist/checkers/index.mjs",
+      "require": "./dist/checkers/index.js"
     },
     "./scanners": {
       "types": "./dist/scanners/index.d.ts",
-      "import": "./dist/scanners/index.js",
-      "require": "./dist/scanners/index.cjs"
+      "import": "./dist/scanners/index.mjs",
+      "require": "./dist/scanners/index.js"
     },
     "./reporters": {
       "types": "./dist/reporters/index.d.ts",
-      "import": "./dist/reporters/index.js",
-      "require": "./dist/reporters/index.cjs"
+      "import": "./dist/reporters/index.mjs",
+      "require": "./dist/reporters/index.js"
     }
   },
   "files": ["dist"],

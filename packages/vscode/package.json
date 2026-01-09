@@ -48,6 +48,10 @@
       {
         "command": "aigrc.createCard",
         "title": "AIGRC: Create Asset Card"
+      },
+      {
+        "command": "aigrc.checkPolicy",
+        "title": "AIGRC: Check Policy Violations"
       }
     ],
     "views": {
@@ -85,6 +89,16 @@
           "type": "string",
           "default": ".aigrc/cards",
           "description": "Directory for asset cards"
+        },
+        "aigrc.governanceLockPath": {
+          "type": "string",
+          "default": "governance.lock",
+          "description": "Path to governance.lock file"
+        },
+        "aigrc.showPolicyViolations": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show policy violation diagnostics in editor"
         }
       }
     },
@@ -105,6 +119,7 @@
   },
   "dependencies": {
     "@aigrc/core": "workspace:*",
+    "@aigrc/i2e-firewall": "workspace:*",
     "yaml": "^2.3.4"
   },
   "devDependencies": {
