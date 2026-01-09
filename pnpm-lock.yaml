@@ -38,6 +38,9 @@ importers:
       '@aigrc/i2e-bridge':
         specifier: ^0.1.0
         version: link:../i2e-bridge
+      '@aigrc/i2e-firewall':
+        specifier: ^0.1.0
+        version: link:../i2e-firewall
       chalk:
         specifier: ^5.3.0
         version: 5.6.2

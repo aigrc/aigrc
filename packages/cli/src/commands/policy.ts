@@ -28,6 +28,17 @@ import {
   type CompilationResult,
   type ExtractedConstraint,
 } from "@aigrc/i2e-bridge";
+import {
+  loadGovernanceLock,
+  CodeScanner,
+  Reporter,
+  generateSarifReportString,
+  type ReportFormat,
+} from "@aigrc/i2e-firewall";
+import {
+  getDaysUntilExpiration,
+  isGovernanceLockExpired,
+} from "@aigrc/core";
 import { printHeader } from "../utils/output.js";
 import { ExitCode, exit } from "../utils/exit-codes.js";
 
@@ -566,4 +577,311 @@ function inferSourceType(source: string): PolicySourceType | null {
   }
 
   return null;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// POLICY STATUS SUBCOMMAND (AIG-152)
+// Shows the status of the governance.lock file
+// ─────────────────────────────────────────────────────────────────
+
+interface StatusOptions {
+  lock?: string;
+  output?: "text" | "json";
+}
+
+policyCommand
+  .command("status")
+  .description("Show governance.lock status and policy summary")
+  .option("-l, --lock <path>", "Path to governance.lock", "governance.lock")
+  .option("-o, --output <format>", "Output format (text, json)", "text")
+  .action(async (options: StatusOptions) => {
+    await runStatus(options);
+  });
+
+async function runStatus(options: StatusOptions): Promise<void> {
+  const lockPath = options.lock ?? "governance.lock";
+
+  if (options.output !== "json") {
+    printHeader();
+    console.log(chalk.bold("Policy Status"));
+    console.log(chalk.dim("─".repeat(50)));
+    console.log();
+  }
+
+  const spinner = options.output !== "json" ? ora("Loading governance.lock...").start() : null;
+
+  try {
+    const result = await loadGovernanceLock(lockPath);
+
+    if (spinner) spinner.stop();
+
+    if (options.output === "json") {
+      const jsonOutput = {
+        valid: result.valid,
+        exists: result.exists,
+        expired: result.expired,
+        path: result.path,
+        errors: result.errors,
+        warnings: result.warnings,
+        lock: result.lock ? {
+          name: result.lock.name,
+          version: result.lock.version,
+          generated_at: result.lock.generated_at,
+          expires_at: result.lock.expires_at,
+          policy_hash: result.lock.policy_hash,
+          policy_sources: result.lock.policy_sources.length,
+          signatures: result.lock.signatures.length,
+          constraints: {
+            registry: {
+              allowed_vendors: result.lock.constraints.registry.allowed_vendor_ids.length,
+              blocked_vendors: result.lock.constraints.registry.blocked_vendor_ids.length,
+              allowed_regions: result.lock.constraints.registry.allowed_region_codes.length,
+              blocked_regions: result.lock.constraints.registry.blocked_region_codes.length,
+              allowed_models: result.lock.constraints.registry.allowed_model_patterns.length,
+              blocked_models: result.lock.constraints.registry.blocked_model_patterns.length,
+            },
+          },
+        } : null,
+      };
+      console.log(JSON.stringify(jsonOutput, null, 2));
+
+      if (!result.valid) {
+        exit(ExitCode.VALIDATION_ERRORS);
+      }
+      return;
+    }
+
+    // Text output
+    if (!result.exists) {
+      console.log(chalk.red("✗ governance.lock not found"));
+      console.log(chalk.dim(`  Expected at: ${lockPath}`));
+      console.log();
+      console.log("Run", chalk.cyan("aigrc policy compile"), "to generate one.");
+      exit(ExitCode.FILE_NOT_FOUND);
+    }
+
+    if (!result.valid) {
+      console.log(chalk.red("✗ governance.lock is invalid"));
+      for (const error of result.errors) {
+        console.log(chalk.red(`  • ${error}`));
+      }
+      exit(ExitCode.VALIDATION_ERRORS);
+    }
+
+    const lock = result.lock!;
+
+    // Header
+    console.log(chalk.green("✓ governance.lock is valid"));
+    console.log();
+
+    // Basic info
+    console.log(chalk.bold("Policy:"), lock.name || "(unnamed)");
+    console.log(chalk.bold("Version:"), lock.version);
+    console.log(chalk.bold("Generated:"), new Date(lock.generated_at).toLocaleString());
+    console.log(chalk.bold("Generator:"), `${lock.generated_by} v${lock.generator_version}`);
+    console.log();
+
+    // Expiration
+    const daysUntil = getDaysUntilExpiration(lock);
+    const isExpired = isGovernanceLockExpired(lock);
+
+    if (isExpired) {
+      console.log(chalk.red("✗ Expired:"), new Date(lock.expires_at).toLocaleString());
+      console.log(chalk.red("  Policy refresh required!"));
+    } else if (daysUntil <= 7) {
+      console.log(chalk.yellow("⚠ Expires:"), new Date(lock.expires_at).toLocaleString());
+      console.log(chalk.yellow(`  Expires in ${daysUntil} days - consider refreshing soon`));
+    } else {
+      console.log(chalk.bold("Expires:"), new Date(lock.expires_at).toLocaleString());
+      console.log(chalk.dim(`  (${daysUntil} days remaining)`));
+    }
+    console.log();
+
+    // Signatures
+    if (lock.signatures.length > 0) {
+      console.log(chalk.bold("Signatures:"));
+      for (const sig of lock.signatures) {
+        const sigExpired = sig.expires_at && new Date(sig.expires_at) < new Date();
+        const icon = sigExpired ? chalk.yellow("⚠") : chalk.green("✓");
+        console.log(`  ${icon} ${sig.signer} (${sig.algorithm})${sig.role ? ` [${sig.role}]` : ""}`);
+      }
+    } else {
+      console.log(chalk.dim("No signatures"));
+    }
+    console.log();
+
+    // Policy sources
+    if (lock.policy_sources.length > 0) {
+      console.log(chalk.bold("Policy Sources:"));
+      for (const source of lock.policy_sources) {
+        console.log(`  • ${source.title || source.uri} (${source.type})`);
+      }
+      console.log();
+    }
+
+    // Constraints summary
+    const reg = lock.constraints.registry;
+    const rt = lock.constraints.runtime;
+    const build = lock.constraints.build;
+
+    console.log(chalk.bold("Constraints:"));
+    console.log(`  Registry:`);
+    console.log(`    Allowed vendors: ${reg.allowed_vendor_ids.length}`);
+    console.log(`    Blocked vendors: ${reg.blocked_vendor_ids.length}`);
+    console.log(`    Allowed models: ${reg.allowed_model_patterns.length}`);
+    console.log(`    Blocked models: ${reg.blocked_model_patterns.length}`);
+    console.log(`    Allowed regions: ${reg.allowed_region_codes.length}`);
+    console.log(`    Blocked regions: ${reg.blocked_region_codes.length}`);
+    console.log();
+
+    console.log(`  Runtime:`);
+    console.log(`    PII filter: ${rt.pii_filter_enabled ? "enabled" : "disabled"}`);
+    console.log(`    Toxicity filter: ${rt.toxicity_filter_enabled ? "enabled" : "disabled"}`);
+    console.log(`    Data retention: ${rt.data_retention_days} days`);
+    console.log(`    Kill switch: ${rt.kill_switch_enabled ? "enabled" : "disabled"}`);
+    console.log();
+
+    console.log(`  Build:`);
+    if (build.require_golden_thread) console.log(`    ✓ Require Golden Thread`);
+    if (build.require_asset_card) console.log(`    ✓ Require Asset Card`);
+    if (build.require_risk_classification) console.log(`    ✓ Require Risk Classification`);
+    if (build.block_on_failure) console.log(`    ✓ Block on Failure`);
+    if (build.generate_sarif) console.log(`    ✓ Generate SARIF`);
+    console.log();
+
+    // Warnings
+    if (result.warnings.length > 0) {
+      console.log(chalk.yellow("Warnings:"));
+      for (const warning of result.warnings) {
+        console.log(chalk.yellow(`  ⚠ ${warning}`));
+      }
+    }
+
+  } catch (error) {
+    if (spinner) spinner.fail("Failed to load governance.lock");
+    console.error(chalk.red(`Error: ${error instanceof Error ? error.message : String(error)}`));
+    exit(ExitCode.RUNTIME_ERROR);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// POLICY CHECK SUBCOMMAND (AIG-153)
+// Scans code for policy violations
+// ─────────────────────────────────────────────────────────────────
+
+interface CheckOptions {
+  lock?: string;
+  output?: "text" | "json" | "sarif";
+  outputFile?: string;
+  include?: string[];
+  exclude?: string[];
+  failOnWarnings?: boolean;
+}
+
+policyCommand
+  .command("check")
+  .description("Scan code for policy violations against governance.lock")
+  .argument("[directory]", "Directory to scan", ".")
+  .option("-l, --lock <path>", "Path to governance.lock", "governance.lock")
+  .option("-o, --output <format>", "Output format (text, json, sarif)", "text")
+  .option("-f, --output-file <path>", "Write report to file")
+  .option("-i, --include <patterns...>", "File patterns to include")
+  .option("-e, --exclude <patterns...>", "File patterns to exclude")
+  .option("--fail-on-warnings", "Exit with error on warnings")
+  .action(async (directory: string, options: CheckOptions) => {
+    await runCheck(directory, options);
+  });
+
+async function runCheck(directory: string, options: CheckOptions): Promise<void> {
+  const lockPath = options.lock ?? "governance.lock";
+  const targetDir = path.resolve(directory);
+
+  if (options.output === "text" && !options.outputFile) {
+    printHeader();
+    console.log(chalk.bold("Policy Check"));
+    console.log(chalk.dim("─".repeat(50)));
+    console.log();
+  }
+
+  const spinner = options.output === "text" && !options.outputFile
+    ? ora("Loading governance.lock...").start()
+    : null;
+
+  try {
+    // Load governance.lock
+    const lockResult = await loadGovernanceLock(lockPath);
+
+    if (!lockResult.valid || !lockResult.air) {
+      if (spinner) spinner.fail("Invalid governance.lock");
+
+      if (options.output === "json") {
+        console.log(JSON.stringify({
+          error: "Invalid governance.lock",
+          details: lockResult.errors,
+        }));
+      } else if (options.output !== "sarif") {
+        console.error(chalk.red("Error: Invalid governance.lock"));
+        for (const error of lockResult.errors) {
+          console.error(chalk.red(`  • ${error}`));
+        }
+      }
+      exit(ExitCode.VALIDATION_ERRORS);
+    }
+
+    if (spinner) spinner.text = `Scanning ${targetDir}...`;
+
+    // Create scanner and scan
+    const scanner = new CodeScanner(lockResult.air, {
+      includePatterns: options.include,
+      excludePatterns: options.exclude,
+      failOnWarnings: options.failOnWarnings,
+    });
+
+    const scanResult = await scanner.scanDirectory(targetDir);
+
+    if (spinner) spinner.stop();
+
+    // Generate report
+    const reporter = new Reporter({
+      colors: options.output === "text" && !options.outputFile,
+      showAlternatives: true,
+    });
+
+    let report: string;
+    if (options.output === "sarif") {
+      report = generateSarifReportString(scanResult, {
+        baseDir: targetDir,
+        pretty: true,
+      });
+    } else if (options.output === "json") {
+      report = reporter.json(scanResult);
+    } else {
+      report = reporter.text(scanResult);
+    }
+
+    // Output
+    if (options.outputFile) {
+      await fs.writeFile(options.outputFile, report, "utf-8");
+      console.log(chalk.green(`✓ Report written to ${options.outputFile}`));
+    } else {
+      console.log(report);
+    }
+
+    // Exit code
+    if (!scanResult.passed) {
+      exit(ExitCode.VALIDATION_ERRORS);
+    }
+
+  } catch (error) {
+    if (spinner) spinner.fail("Scan failed");
+
+    if (options.output === "json") {
+      console.log(JSON.stringify({
+        error: error instanceof Error ? error.message : String(error),
+      }));
+    } else if (options.output !== "sarif") {
+      console.error(chalk.red(`Error: ${error instanceof Error ? error.message : String(error)}`));
+    }
+    exit(ExitCode.RUNTIME_ERROR);
+  }
 }
