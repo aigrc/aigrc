@@ -13,7 +13,8 @@
   "dependencies": {
     "@actions/core": "^1.10.1",
     "@actions/github": "^6.0.0",
-    "@aigrc/core": "workspace:*"
+    "@aigrc/core": "workspace:*",
+    "@aigrc/i2e-firewall": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

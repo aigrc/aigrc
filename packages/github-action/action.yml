@@ -10,6 +10,26 @@ inputs:
     description: "Directory to scan (relative to workspace)"
     required: false
     default: "."
+  governance-lock:
+    description: "Path to governance.lock file (relative to directory)"
+    required: false
+    default: "governance.lock"
+  check-policy:
+    description: "Check code against governance.lock policy constraints"
+    required: false
+    default: "true"
+  fail-on-violations:
+    description: "Fail if policy violations are found"
+    required: false
+    default: "true"
+  fail-on-warnings:
+    description: "Fail on policy warnings (in addition to errors)"
+    required: false
+    default: "false"
+  upload-sarif:
+    description: "Upload SARIF report to GitHub Security tab"
+    required: false
+    default: "true"
   fail-on-high-risk:
     description: "Fail the action if high-risk AI assets are detected"
     required: false
@@ -44,6 +64,18 @@ outputs:
     description: "Number of asset cards found"
   scan-results:
     description: "Full scan results as JSON"
+  governance-lock-valid:
+    description: "Whether governance.lock is valid and not expired"
+  policy-violations:
+    description: "Number of policy violations found"
+  policy-errors:
+    description: "Number of policy errors (blocking)"
+  policy-warnings:
+    description: "Number of policy warnings (non-blocking unless fail-on-warnings)"
+  policy-passed:
+    description: "Whether policy check passed"
+  sarif-path:
+    description: "Path to generated SARIF file (if upload-sarif enabled)"
 
 runs:
   using: "node20"

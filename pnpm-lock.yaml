@@ -112,6 +112,9 @@ importers:
       '@aigrc/core':
         specifier: workspace:*
         version: link:../core
+      '@aigrc/i2e-firewall':
+        specifier: workspace:*
+        version: link:../i2e-firewall
     devDependencies:
       '@types/node':
         specifier: ^20.10.0

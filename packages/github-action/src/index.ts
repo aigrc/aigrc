@@ -13,6 +13,12 @@ import {
   type AssetCard,
   type ClassificationResult,
 } from "@aigrc/core";
+import {
+  loadGovernanceLock,
+  scanDirectory,
+  generateSarifReport,
+  type ScanResult as PolicyScanResult,
+} from "@aigrc/i2e-firewall";
 
 // ─────────────────────────────────────────────────────────────────
 // MAIN ACTION
@@ -22,6 +28,11 @@ async function run(): Promise<void> {
   try {
     // Get inputs
     const directory = core.getInput("directory") || ".";
+    const governanceLockPath = core.getInput("governance-lock") || "governance.lock";
+    const checkPolicy = core.getBooleanInput("check-policy");
+    const failOnViolations = core.getBooleanInput("fail-on-violations");
+    const failOnWarnings = core.getBooleanInput("fail-on-warnings");
+    const uploadSarif = core.getBooleanInput("upload-sarif");
     const failOnHighRisk = core.getBooleanInput("fail-on-high-risk");
     const failOnUnregistered = core.getBooleanInput("fail-on-unregistered");
     const validateCards = core.getBooleanInput("validate-cards");
@@ -30,6 +41,7 @@ async function run(): Promise<void> {
 
     const workspacePath = process.env.GITHUB_WORKSPACE || process.cwd();
     const scanPath = path.resolve(workspacePath, directory);
+    const fullLockPath = path.resolve(scanPath, governanceLockPath);
 
     core.info(`AIGRC: Scanning ${scanPath}`);
 
@@ -63,17 +75,111 @@ async function run(): Promise<void> {
     const highestRisk = determineHighestRisk(cardResults.cards);
     core.setOutput("risk-level", highestRisk);
 
+    // ─────────────────────────────────────────────────────────────────
+    // POLICY CHECKING (AIG-149, AIG-150)
+    // ─────────────────────────────────────────────────────────────────
+    let policyResult: PolicyScanResult | undefined;
+    let governanceLockValid = false;
+
+    if (checkPolicy) {
+      core.startGroup("Checking policy violations");
+
+      // Load governance.lock
+      const lockResult = await loadGovernanceLock(fullLockPath);
+
+      if (!lockResult.valid || !lockResult.air) {
+        core.warning(`governance.lock not valid: ${lockResult.errors.join(", ")}`);
+        core.setOutput("governance-lock-valid", false);
+        core.setOutput("policy-passed", false);
+        core.setOutput("policy-violations", 0);
+        core.setOutput("policy-errors", 0);
+        core.setOutput("policy-warnings", 0);
+      } else {
+        governanceLockValid = true;
+        core.setOutput("governance-lock-valid", true);
+
+        // Show warnings about expiring lock
+        for (const warning of lockResult.warnings) {
+          core.warning(warning);
+        }
+
+        // Scan for policy violations
+        policyResult = await scanDirectory(scanPath, lockResult.air, {
+          includePatterns: ["**/*.ts", "**/*.js", "**/*.py", "**/*.tsx", "**/*.jsx"],
+          excludePatterns: ["**/node_modules/**", "**/dist/**", "**/.git/**", "**/build/**"],
+          failOnWarnings,
+        });
+
+        const errorCount = policyResult.violations.filter((v) => v.severity === "error").length;
+        const warningCount = policyResult.violations.filter((v) => v.severity === "warning").length;
+
+        core.setOutput("policy-violations", policyResult.violations.length);
+        core.setOutput("policy-errors", errorCount);
+        core.setOutput("policy-warnings", warningCount);
+        core.setOutput("policy-passed", policyResult.passed);
+
+        core.info(`Policy violations: ${policyResult.violations.length} (${errorCount} errors, ${warningCount} warnings)`);
+        core.info(`Policy check: ${policyResult.passed ? "PASSED" : "FAILED"}`);
+
+        // Log violations
+        if (policyResult.violations.length > 0) {
+          for (const violation of policyResult.violations.slice(0, 20)) {
+            const location = violation.file ? `${violation.file}:${violation.line}` : "unknown";
+            if (violation.severity === "error") {
+              core.error(violation.message, {
+                file: violation.file,
+                startLine: violation.line,
+                startColumn: violation.column,
+              });
+            } else {
+              core.warning(violation.message, {
+                file: violation.file,
+                startLine: violation.line,
+                startColumn: violation.column,
+              });
+            }
+          }
+
+          if (policyResult.violations.length > 20) {
+            core.info(`... and ${policyResult.violations.length - 20} more violations`);
+          }
+        }
+
+        // Generate and upload SARIF report
+        if (uploadSarif && policyResult.violations.length > 0) {
+          const sarifPath = path.join(scanPath, "aigrc-policy-results.sarif");
+          const sarifReport = generateSarifReport(policyResult, {
+            baseDir: scanPath,
+            toolVersion: "1.0.0",
+          });
+
+          fs.writeFileSync(sarifPath, JSON.stringify(sarifReport, null, 2));
+          core.setOutput("sarif-path", sarifPath);
+          core.info(`SARIF report written to ${sarifPath}`);
+        }
+      }
+
+      core.endGroup();
+    }
+
     // Log summary
-    logSummary(scanResult, cardResults, highestRisk);
+    logSummary(scanResult, cardResults, highestRisk, policyResult);
 
     // Create PR comment if enabled
     if (createPrComment && github.context.eventName === "pull_request" && githubToken) {
-      await createComment(githubToken, scanResult, cardResults, highestRisk);
+      await createComment(githubToken, scanResult, cardResults, highestRisk, policyResult);
     }
 
     // Determine if action should fail
     let shouldFail = false;
     let failReason = "";
+
+    // Policy violations check
+    if (checkPolicy && policyResult && !policyResult.passed && failOnViolations) {
+      shouldFail = true;
+      const errorCount = policyResult.violations.filter((v) => v.severity === "error").length;
+      failReason = `Policy violations detected: ${errorCount} errors`;
+    }
 
     if (failOnHighRisk && (highestRisk === "high" || highestRisk === "unacceptable")) {
       shouldFail = true;
@@ -204,7 +310,8 @@ function determineHighestRisk(cards: CardValidationResult[]): string {
 function logSummary(
   scanResult: ScanResult,
   cardResults: CardResults,
-  highestRisk: string
+  highestRisk: string,
+  policyResult?: PolicyScanResult
 ): void {
   core.info("");
   core.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -216,6 +323,15 @@ function logSummary(
   core.info(`Asset cards:          ${cardResults.cards.length}`);
   core.info(`Cards valid:          ${cardResults.allValid ? "Yes" : "No"}`);
   core.info(`Highest risk level:   ${highestRisk.toUpperCase()}`);
+
+  // Policy results
+  if (policyResult) {
+    const errorCount = policyResult.violations.filter((v) => v.severity === "error").length;
+    const warningCount = policyResult.violations.filter((v) => v.severity === "warning").length;
+    core.info(`Policy violations:    ${policyResult.violations.length} (${errorCount} errors, ${warningCount} warnings)`);
+    core.info(`Policy status:        ${policyResult.passed ? "PASSED" : "FAILED"}`);
+  }
+
   core.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
   // Log detections by framework
@@ -268,7 +384,8 @@ async function createComment(
   token: string,
   scanResult: ScanResult,
   cardResults: CardResults,
-  highestRisk: string
+  highestRisk: string,
+  policyResult?: PolicyScanResult
 ): Promise<void> {
   try {
     const octokit = github.getOctokit(token);
@@ -280,7 +397,7 @@ async function createComment(
       return;
     }
 
-    const body = generateCommentBody(scanResult, cardResults, highestRisk);
+    const body = generateCommentBody(scanResult, cardResults, highestRisk, policyResult);
 
     // Check for existing comment to update
     const { data: comments } = await octokit.rest.issues.listComments({
@@ -318,9 +435,14 @@ async function createComment(
 function generateCommentBody(
   scanResult: ScanResult,
   cardResults: CardResults,
-  highestRisk: string
+  highestRisk: string,
+  policyResult?: PolicyScanResult
 ): string {
-  const statusIcon = getStatusIcon(highestRisk, cardResults.allValid);
+  const policyPassed = policyResult ? policyResult.passed : true;
+  const statusIcon = getStatusIcon(highestRisk, cardResults.allValid, policyPassed);
+
+  const errorCount = policyResult?.violations.filter((v) => v.severity === "error").length ?? 0;
+  const warningCount = policyResult?.violations.filter((v) => v.severity === "warning").length ?? 0;
 
   let body = `<!-- aigrc-action-comment -->
 ## ${statusIcon} AIGRC Governance Report
@@ -335,6 +457,8 @@ function generateCommentBody(
 | Asset Cards | ${cardResults.cards.length} |
 | Cards Valid | ${cardResults.allValid ? "✅ Yes" : "❌ No"} |
 | Risk Level | ${getRiskIcon(highestRisk)} ${highestRisk.toUpperCase()} |
+${policyResult ? `| Policy Violations | ${errorCount > 0 ? "❌" : "✅"} ${policyResult.violations.length} (${errorCount} errors, ${warningCount} warnings) |
+| Policy Status | ${policyPassed ? "✅ PASSED" : "❌ FAILED"} |` : ""}
 
 `;
 
@@ -445,7 +569,8 @@ Run \`aigrc init\` to generate a full asset card.
   return body;
 }
 
-function getStatusIcon(highestRisk: string, allValid: boolean): string {
+function getStatusIcon(highestRisk: string, allValid: boolean, policyPassed: boolean = true): string {
+  if (!policyPassed) return "❌";
   if (!allValid) return "❌";
   if (highestRisk === "unacceptable") return "🚫";
   if (highestRisk === "high") return "⚠️";
