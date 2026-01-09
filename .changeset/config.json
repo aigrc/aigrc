@@ -1,0 +1,13 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.0.0/schema.json",
+  "changelog": "@changesets/cli/changelog",
+  "commit": false,
+  "fixed": [],
+  "linked": [
+    ["@aigrc/core", "@aigrc/cli", "@aigrc/mcp", "@aigrc/sdk", "@aigrc/i2e-bridge", "@aigrc/i2e-firewall"]
+  ],
+  "access": "public",
+  "baseBranch": "master",
+  "updateInternalDependencies": "patch",
+  "ignore": ["@aigrc/github-action", "aigrc-vscode"]
+}
