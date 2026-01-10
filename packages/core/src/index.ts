@@ -32,3 +32,6 @@ export * from "./governance-lock";
 
 // Utilities
 export * from "./utils";
+
+// CGA (Certified Governed Agent)
+export * as cga from "./cga";
