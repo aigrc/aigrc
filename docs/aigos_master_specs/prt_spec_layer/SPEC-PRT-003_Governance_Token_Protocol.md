@@ -9,7 +9,7 @@
 | **Status** | Draft |
 | **Category** | Protocol |
 | **Last Updated** | 2025-12-30 |
-| **Authors** | GovOS Team |
+| **Authors** | S.Maitland Davies |
 | **License** | Apache 2.0 |
 
 ---
