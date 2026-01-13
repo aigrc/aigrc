@@ -9,7 +9,7 @@
 | **Status** | Draft |
 | **Layer** | Layer 3: Kinetic Governance |
 | **Last Updated** | 2025-12-29 |
-| **Authors** | GovOS Team |
+| **Authors** | Saye Maitalnd Davies |
 | **License** | Apache 2.0 |
 
 ---
