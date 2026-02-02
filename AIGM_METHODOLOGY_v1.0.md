@@ -1,4 +1,5 @@
 # AI Governance Maturity Methodology (AIGM)
+<img width="1289" height="700" alt="image" src="https://github.com/user-attachments/assets/afcce9dc-f39e-4df9-8ae1-a9c561b4e6e3" />
 
 ## The AIRegMap Corporate Assessment Framework
 
@@ -37,7 +38,7 @@
 ### 1.1 Purpose
 
 The AI Governance Maturity Methodology (AIGM) provides a transparent, reproducible framework for assessing the AI governance posture of organizations. Unlike proprietary ESG-based approaches that treat AI as an addendum to existing frameworks, AIGM is purpose-built to evaluate the unique characteristics of AI systems governance.
-<img width="1298" height="700" alt="image" src="https://github.com/user-attachments/assets/b3909936-306a-4a04-ba5b-53acace2946c" />
+
 
 ### 1.2 Key Differentiators
 
@@ -70,7 +71,7 @@ AIGM is built on the principle that **governance maturity is demonstrated throug
 - **Continuous improvement** over point-in-time compliance
 - **Proportionality** to AI risk exposure
 - **Transparency** in both methodology and results
-
+<img width="1298" height="700" alt="image" src="https://github.com/user-attachments/assets/b3909936-306a-4a04-ba5b-53acace2946c" />
 ---
 
 ## 2. Methodology Principles
