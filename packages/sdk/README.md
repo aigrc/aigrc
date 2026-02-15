@@ -1,18 +1,23 @@
 # @aigos/sdk
 
-> Unified SDK for AIGOS - AI Governance Operating System
+> The unified SDK for building governed AI agents with the AI Governance Operating System (AIGOS)
 
-The primary TypeScript SDK for building governed AI agents with enterprise-grade compliance, observability, and control.
+[![npm version](https://img.shields.io/npm/v/@aigos/sdk.svg)](https://www.npmjs.com/package/@aigos/sdk)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-## Features
+## Overview
 
-- **`createGovernedAgent()`** - Factory for creating governed agents with automatic Control Plane integration
-- **`@guard` Decorator** - Method-level governance enforcement with policy checking
-- **Control Plane Client** - Registration, heartbeat, policy sync, and kill-switch
-- **Telemetry** - OpenTelemetry-compatible observability with tracing and metrics
-- **Kill Switch** - Real-time agent termination via SSE/polling
-- **HITL Integration** - Human-in-the-loop approval workflows
-- **Capability Decay** - Automatic permission reduction for child agents
+`@aigos/sdk` provides everything you need to build AI agents with built-in governance, policy enforcement, and compliance. It integrates seamlessly with the AIGOS Control Plane for centralized management, HITL (Human-in-the-Loop) approvals, and kill switch capabilities.
+
+### Key Features
+
+- 🛡️ **Policy Enforcement** - Declarative permission checking with capability manifests
+- 🔗 **Golden Thread Protocol** - Cryptographic linking to business authorization
+- 👤 **HITL Integration** - Request human approval for sensitive operations
+- ⚡ **Kill Switch** - Remote termination and control capabilities
+- 🌳 **Hierarchical Agents** - Spawn child agents with capability decay
+- 📊 **Telemetry** - Built-in observability and audit logging
+- 🎯 **Decorator Support** - Method-level governance with `@guard`
 
 ## Installation
 
@@ -26,26 +31,26 @@ yarn add @aigos/sdk
 
 ## Quick Start
 
+### Basic Agent
+
 ```typescript
-import { createGovernedAgent, guard, setAgent } from "@aigos/sdk";
+import { createGovernedAgent } from '@aigos/sdk';
 
 // Create a governed agent
 const agent = await createGovernedAgent({
-  name: "order-processor",
-  version: "1.0.0",
-  controlPlane: "https://cp.aigos.io",
-  apiKey: process.env.AIGOS_API_KEY,
+  name: 'order-processor',
+  version: '1.0.0',
+
+  // Define what this agent can do
   capabilities: {
-    tools: ["database:read", "database:write", "api:call"],
-  },
-  telemetry: {
-    enabled: true,
-    endpoint: "https://otel.aigos.io/v1/traces",
+    allowed_tools: ['database:read', 'api:orders:*'],
+    denied_tools: ['admin:*'],
+    max_cost_per_session: 10.00,
   },
 });
 
-// Check permissions before actions
-const result = await agent.checkPermission("database:write", "orders");
+// Check permission before action
+const result = await agent.checkPermission('database:read', 'orders');
 if (result.allowed) {
   // Perform the action
 }
@@ -54,198 +59,301 @@ if (result.allowed) {
 await agent.shutdown();
 ```
 
-## Using the @guard Decorator
-
-Apply governance at the method level:
+### Using the @guard Decorator
 
 ```typescript
-import { guard, setAgent } from "@aigos/sdk";
+import { createGovernedAgent, guard, setAgent } from '@aigos/sdk';
 
-class OrderService {
-  @guard({ action: "database:write", resource: "orders" })
-  async createOrder(data: OrderData) {
-    // Only executes if permission is granted
-    return db.orders.create(data);
+class UserService {
+  @guard({ action: 'database:read', resource: 'users' })
+  async getUsers() {
+    return await db.query('SELECT * FROM users');
   }
 
-  @guard({
-    action: "pii:access",
-    requireApproval: true,
-    approvalTimeoutMs: 300000 // 5 minutes
-  })
-  async accessUserPII(userId: string) {
-    // Requires HITL approval before execution
-    return db.users.findById(userId);
+  @guard({ action: 'admin:delete', requireApproval: true })
+  async deleteAllUsers() {
+    // Requires HITL approval before executing
   }
 }
 
-// Attach agent to service instance
-const service = new OrderService();
+const agent = await createGovernedAgent({ ... });
+const service = new UserService();
 setAgent(service, agent);
 
-// Now methods are governed
-await service.createOrder({ item: "widget", quantity: 1 });
+// This will check permission automatically
+const users = await service.getUsers();
 ```
 
-## Functional Guard
-
-For functional programming style:
+### Control Plane Integration
 
 ```typescript
-import { withGuard } from "@aigos/sdk";
+const agent = await createGovernedAgent({
+  name: 'production-worker',
+  version: '1.0.0',
 
-const guardedFetch = withGuard(
-  agent,
-  { action: "api:call", resource: "external" },
-  async (url: string) => {
-    return fetch(url);
-  }
-);
+  // Connect to Control Plane
+  controlPlane: 'https://cp.aigos.io',
+  apiKey: process.env.AIGOS_API_KEY,
 
-const response = await guardedFetch("https://api.example.com/data");
+  // Enable kill switch
+  killSwitch: {
+    enabled: true,
+    onCommand: async (cmd) => {
+      console.log(`Received: ${cmd.command}`);
+    },
+  },
+
+  // Enable telemetry
+  telemetry: true,
+
+  // Link to business authorization
+  goldenThread: {
+    ticket_id: 'JIRA-456',
+    approved_by: 'security@company.com',
+    approved_at: '2024-01-01T00:00:00Z',
+  },
+});
 ```
 
-## Control Plane Integration
+## API Reference
 
-The SDK automatically handles:
+### `createGovernedAgent(config)`
 
-- **Registration** - Agents register on startup
-- **Heartbeat** - Periodic health checks (30s default)
-- **Policy Sync** - Fetch latest policies from Control Plane
-- **Kill Switch** - Subscribe to real-time termination commands
-- **Telemetry** - Report actions, decisions, and errors
+Creates a new governed agent instance.
+
+#### Config Options
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `name` | `string` | Yes | Agent name |
+| `version` | `string` | No | Semantic version (default: "1.0.0") |
+| `controlPlane` | `string` | No | Control Plane URL |
+| `apiKey` | `string` | No | API key for Control Plane |
+| `capabilities` | `CapabilitiesManifest` | No | Capability restrictions |
+| `goldenThread` | `GoldenThread` | No | Business authorization |
+| `killSwitch` | `KillSwitchConfig` | No | Kill switch settings |
+| `telemetry` | `boolean \| TelemetryConfig` | No | Telemetry settings |
+| `mode` | `OperatingMode` | No | Operating mode |
+| `parent` | `ParentConfig` | No | Parent agent for spawning |
+
+#### CapabilitiesManifest
 
 ```typescript
-// Access the Control Plane client directly
-const policies = await agent.client.fetchPolicies();
-
-// Check connection status
-if (agent.client.isConnected) {
-  console.log("Connected to Control Plane");
+interface CapabilitiesManifest {
+  allowed_tools: string[];      // Actions agent can perform
+  denied_tools: string[];       // Explicitly denied actions
+  allowed_domains: string[];    // Allowed network domains
+  denied_domains: string[];     // Blocked network domains
+  may_spawn_children: boolean;  // Can spawn child agents
+  max_child_depth: number;      // Maximum spawn depth
+  capability_mode: 'decay' | 'inherit' | 'explicit';
+  max_cost_per_session?: number;
+  max_cost_per_day?: number;
+  max_tokens_per_call?: number;
 }
 ```
 
-## Spawning Child Agents
+### `guard(options)`
 
-Create child agents with automatic capability decay:
+Decorator for method-level governance.
 
 ```typescript
-const childAgent = await agent.spawn({
-  name: "order-processor-worker",
-  // Capabilities are automatically reduced (80% by default)
-});
-
-// Child has reduced permissions
-const result = await childAgent.checkPermission("database:write");
-// May return { allowed: false } due to decay
+@guard({
+  action: 'database:read',      // Required: action to check
+  resource: 'users/${userId}',  // Optional: resource (supports interpolation)
+  requireApproval: false,       // Optional: require HITL approval
+  fallback: 'deny',             // Optional: behavior when offline
+})
 ```
 
-## HITL (Human-in-the-Loop) Approval
+### `setAgent(instance, agent)`
+
+Attaches a governed agent to a class instance.
+
+```typescript
+const service = new MyService();
+setAgent(service, agent);
+```
+
+### `getAgent(instance)`
+
+Retrieves the governed agent from a class instance.
+
+```typescript
+const agent = getAgent(service);
+```
+
+### `withGuard(fn, agent, options)`
+
+Functional wrapper for governance (non-decorator alternative).
+
+```typescript
+const guardedFn = withGuard(
+  myFunction,
+  agent,
+  { action: 'database:read' }
+);
+```
+
+## Capability Decay
+
+When spawning child agents, capabilities decay based on the `capability_mode`:
+
+### Decay Mode (Default)
+- Numeric limits reduced by 20% per generation
+- Tools inherited from parent
+- Spawn depth limited by `max_child_depth`
+
+### Inherit Mode
+- Full capability inheritance
+- Same limits as parent
+
+### Explicit Mode
+- Child must specify all capabilities
+- No automatic inheritance
+
+```typescript
+// Parent with $100 cost limit
+const parent = await createGovernedAgent({
+  capabilities: {
+    may_spawn_children: true,
+    max_child_depth: 3,
+    capability_mode: 'decay',
+    max_cost_per_session: 100,
+  },
+});
+
+// Child gets $80 limit (100 * 0.8)
+const child = await parent.spawn({ name: 'child' });
+
+// Grandchild gets $64 limit (80 * 0.8)
+const grandchild = await child.spawn({ name: 'grandchild' });
+```
+
+## Golden Thread Protocol
+
+The Golden Thread creates an unbroken link from runtime actions to business authorization:
+
+```
+┌─────────────────────┐
+│   Business Request  │  ← Jira/ServiceNow ticket
+└──────────┬──────────┘
+           │
+┌──────────▼──────────┐
+│  Security Approval  │  ← approved_by, approved_at
+└──────────┬──────────┘
+           │
+┌──────────▼──────────┐
+│   Agent Instance    │  ← instance_id, golden_thread_hash
+└──────────┬──────────┘
+           │
+┌──────────▼──────────┐
+│   Runtime Actions   │  ← Audit log with full traceability
+└─────────────────────┘
+```
+
+```typescript
+const agent = await createGovernedAgent({
+  goldenThread: {
+    ticket_id: 'JIRA-123',
+    approved_by: 'security@company.com',
+    approved_at: '2024-01-01T00:00:00Z',
+    signature: 'sha256:...',  // Optional cryptographic signature
+  },
+});
+```
+
+## HITL (Human-in-the-Loop)
 
 Request human approval for sensitive operations:
 
 ```typescript
 const approval = await agent.requestApproval({
-  action: "delete:user",
-  resource: "user-123",
+  action: 'database:delete',
+  resource: 'production/users',
+  reason: 'Quarterly cleanup of inactive accounts',
   context: {
-    reason: "GDPR deletion request",
-    requestedBy: "admin@company.com",
+    affected_records: 5000,
+    reversible: true,
   },
-  timeoutMs: 300000, // 5 minutes
-  fallback: "deny", // Deny if timeout
-  priority: "high",
+  timeout: 300000,  // 5 minutes
+  fallback: 'deny', // Deny if offline/timeout
 });
 
 if (approval.approved) {
-  console.log(`Approved by ${approval.approvedBy}`);
-  // Proceed with deletion
+  // Proceed with operation
+} else {
+  // Handle denial
 }
 ```
 
-## Telemetry
+## Kill Switch
 
-Built-in observability with OpenTelemetry compatibility:
+The kill switch provides remote control capabilities:
 
 ```typescript
-import { createTelemetryManager } from "@aigos/sdk/telemetry";
-
-const telemetry = createTelemetryManager(
-  {
+const agent = await createGovernedAgent({
+  killSwitch: {
     enabled: true,
-    endpoint: "https://otel.aigos.io/v1/traces",
-    samplingRate: 0.1, // 10% sampling
+    onCommand: async (command) => {
+      switch (command.command) {
+        case 'pause':
+          // Agent paused, checkPermission returns false
+          break;
+        case 'resume':
+          // Agent resumed
+          break;
+        case 'terminate':
+          // Agent shutting down
+          break;
+        case 'restart':
+          // Trigger restart logic
+          break;
+      }
+    },
   },
-  agent.identity
-);
-
-// Record custom events
-telemetry.recordAction("order:created", { orderId: "123" });
-telemetry.recordMetric("order:value", 99.99);
-
-// Create spans for tracing
-const span = telemetry.startSpan("process-order");
-try {
-  // ... processing ...
-  span.setStatus("OK");
-} catch (error) {
-  span.setStatus("ERROR", error.message);
-  telemetry.recordError(error);
-} finally {
-  span.end();
-}
+});
 ```
 
-## Type Exports
+## Operating Modes
 
-The SDK re-exports all types from `@aigrc/core`:
+| Mode | Description |
+|------|-------------|
+| `NORMAL` | Standard operation |
+| `DEGRADED` | Reduced capabilities |
+| `EMERGENCY` | Emergency-only operations |
+| `MAINTENANCE` | Maintenance mode |
+| `READ_ONLY` | Read-only operations |
 
-```typescript
-import type {
-  RuntimeIdentity,
-  GoldenThread,
-  PolicyFile,
-  CapabilitiesManifest,
-  OperatingMode,
-  Lineage,
-} from "@aigos/sdk";
+## Examples
+
+See the `examples/` directory for complete examples:
+
+- `basic-agent.ts` - Simple agent with permission checking
+- `guard-decorator.ts` - Using @guard for method-level governance
+- `child-spawning.ts` - Hierarchical agents with capability decay
+- `golden-thread.ts` - Golden Thread Protocol integration
+- `langchain-integration.ts` - LangChain agent governance
+- `control-plane-integration.ts` - Full Control Plane integration
+
+Run examples with:
+
+```bash
+npx tsx examples/basic-agent.ts
 ```
-
-## Configuration Reference
-
-### GovernedAgentConfig
-
-| Option | Type | Description |
-|--------|------|-------------|
-| `name` | `string` | Agent name (required) |
-| `version` | `string` | Semantic version |
-| `controlPlane` | `string` | Control Plane URL |
-| `apiKey` | `string` | API key for auth |
-| `capabilities` | `Partial<CapabilitiesManifest>` | Initial capabilities |
-| `policies` | `PolicyFile[]` | Initial policies |
-| `mode` | `OperatingMode` | NORMAL, SANDBOX, RESTRICTED |
-| `parent` | `{ instanceId, capabilities }` | Parent agent for spawn |
-| `telemetry` | `boolean \| TelemetryConfig` | Enable telemetry |
-| `killSwitch` | `KillSwitchConfig` | Kill switch config |
-| `goldenThread` | `GoldenThread` | Business authorization |
-
-### GuardOptions
-
-| Option | Type | Description |
-|--------|------|-------------|
-| `action` | `string` | Action to check (required) |
-| `resource` | `string` | Resource being accessed |
-| `requireApproval` | `boolean` | Require HITL approval |
-| `approvalTimeoutMs` | `number` | Approval timeout |
-| `approvalFallback` | `"deny" \| "allow"` | Timeout behavior |
-| `permissionCheck` | `(context) => boolean` | Custom checker |
 
 ## License
 
-Apache-2.0
+Apache-2.0 - See [LICENSE](LICENSE) for details.
 
 ## Related Packages
 
-- [@aigrc/core](https://www.npmjs.com/package/@aigrc/core) - Core schemas and utilities
-- [@aigrc/cli](https://www.npmjs.com/package/@aigrc/cli) - Command-line tools
-- [@aigrc/mcp](https://www.npmjs.com/package/@aigrc/mcp) - MCP server for AI assistants
+- `@aigrc/core` - Core schemas and types
+- `@aigrc/cli` - Command-line interface
+- `@aigrc/mcp` - Model Context Protocol server
+
+## Support
+
+- 📖 [Documentation](https://docs.aigos.dev)
+- 💬 [Discord Community](https://discord.gg/aigos)
+- 🐛 [Issue Tracker](https://github.com/ai-gos/aigos/issues)
