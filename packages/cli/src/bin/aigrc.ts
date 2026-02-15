@@ -14,6 +14,8 @@ import { generateCommand } from "../commands/generate.js";
 import { reportCommand } from "../commands/report.js";
 // I2E Policy Bridge commands
 import { policyCommand } from "../commands/policy.js";
+// CGA certification commands
+import { certifyCommand } from "../commands/certify.js";
 
 program
   .name("aigrc")
@@ -38,5 +40,8 @@ program.addCommand(reportCommand);
 
 // I2E Policy Bridge commands
 program.addCommand(policyCommand);
+
+// CGA certification commands
+program.addCommand(certifyCommand);
 
 program.parse();
