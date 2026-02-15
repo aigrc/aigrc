@@ -13,6 +13,15 @@ const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 describe('ControlPlaneClient', () => {
+  // Use fake timers for reliable timing tests
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   const mockIdentity: RuntimeIdentity = {
     instance_id: 'test-instance-123',
     asset_id: 'aigrc-2024-test',
@@ -273,18 +282,55 @@ describe('ControlPlaneClient', () => {
         endpoint: 'https://cp.aigos.io',
         apiKey: 'test-key',
         identity: mockIdentity,
-        heartbeatInterval: 100, // Short interval for testing
+        heartbeatInterval: 1000, // 1 second interval
       });
 
-      await client.register();
+      // Register the client
+      const registerPromise = client.register();
+      await vi.runAllTimersAsync();
+      await registerPromise;
 
-      // Wait for at least one heartbeat
-      await new Promise(resolve => setTimeout(resolve, 150));
+      // Initial call count after registration
+      const initialCallCount = mockFetch.mock.calls.length;
 
-      // Should have called endpoint multiple times (register + heartbeat)
-      expect(mockFetch.mock.calls.length).toBeGreaterThanOrEqual(2);
+      // Advance time by heartbeat interval
+      await vi.advanceTimersByTimeAsync(1000);
+
+      // Should have called endpoint for heartbeat
+      expect(mockFetch.mock.calls.length).toBeGreaterThan(initialCallCount);
+
+      // Advance time again to verify continued heartbeats
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(mockFetch.mock.calls.length).toBeGreaterThan(initialCallCount + 1);
 
       await client.disconnect();
+    });
+
+    it('should stop heartbeat after disconnect', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ success: true }),
+      });
+
+      const client = createControlPlaneClient({
+        endpoint: 'https://cp.aigos.io',
+        apiKey: 'test-key',
+        identity: mockIdentity,
+        heartbeatInterval: 1000,
+      });
+
+      const registerPromise = client.register();
+      await vi.runAllTimersAsync();
+      await registerPromise;
+
+      await client.disconnect();
+
+      const callCountAfterDisconnect = mockFetch.mock.calls.length;
+
+      // Advance time - no new heartbeats should occur
+      await vi.advanceTimersByTimeAsync(3000);
+
+      expect(mockFetch.mock.calls.length).toBe(callCountAfterDisconnect);
     });
   });
 });

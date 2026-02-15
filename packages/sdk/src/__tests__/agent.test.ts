@@ -6,17 +6,26 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createGovernedAgent } from '../agent.js';
-import type { GovernedAgentConfig, GovernedAgent } from '../types/index.js';
+import type { GovernedAgentConfig, GovernedAgent, KillSwitchCommand } from '../types/index.js';
 
-// Mock the client module
+// Store kill switch handler for testing
+let capturedKillSwitchHandler: ((cmd: KillSwitchCommand) => void) | null = null;
+
+// Mock factory to create configurable client mocks
+const createMockClient = () => ({
+  register: vi.fn().mockResolvedValue({ success: true }),
+  disconnect: vi.fn().mockResolvedValue(undefined),
+  subscribeKillSwitch: vi.fn((handler: (cmd: KillSwitchCommand) => void) => {
+    capturedKillSwitchHandler = handler;
+    return vi.fn(); // unsubscribe function
+  }),
+  requestHITL: vi.fn().mockResolvedValue({ approved: true }),
+  isConnected: true,
+});
+
+// Mock the client module with hoisted mock
 vi.mock('../client/index.js', () => ({
-  createControlPlaneClient: vi.fn(() => ({
-    register: vi.fn().mockResolvedValue({ success: true }),
-    disconnect: vi.fn().mockResolvedValue(undefined),
-    subscribeKillSwitch: vi.fn(() => vi.fn()),
-    requestHITL: vi.fn().mockResolvedValue({ approved: true }),
-    isConnected: true,
-  })),
+  createControlPlaneClient: vi.fn(() => createMockClient()),
 }));
 
 // Mock telemetry module
@@ -39,6 +48,11 @@ describe('createGovernedAgent', () => {
   };
 
   let agent: GovernedAgent;
+
+  beforeEach(() => {
+    // Reset captured handler before each test
+    capturedKillSwitchHandler = null;
+  });
 
   afterEach(async () => {
     if (agent) {
@@ -115,29 +129,20 @@ describe('createGovernedAgent', () => {
     });
 
     it('should deny all permissions when agent is paused', async () => {
-      // Create agent with kill switch callback to capture pause
-      let pauseCallback: Function | null = null;
-      const mockClient = {
-        register: vi.fn().mockResolvedValue({ success: true }),
-        disconnect: vi.fn().mockResolvedValue(undefined),
-        subscribeKillSwitch: vi.fn((cb) => {
-          pauseCallback = cb;
-          return vi.fn();
-        }),
-        requestHITL: vi.fn().mockResolvedValue({ approved: true }),
-        isConnected: true,
-      };
-
-      vi.mocked(await import('../client/index.js')).createControlPlaneClient.mockReturnValue(mockClient as any);
+      // Reset the captured handler
+      capturedKillSwitchHandler = null;
 
       agent = await createGovernedAgent({
         ...baseConfig,
         killSwitch: { enabled: true },
       });
 
-      // Simulate pause command
-      if (pauseCallback) {
-        await pauseCallback({ command: 'pause', reason: 'Test pause' });
+      // Verify kill switch handler was captured
+      expect(capturedKillSwitchHandler).not.toBeNull();
+
+      // Simulate pause command via captured handler
+      if (capturedKillSwitchHandler) {
+        capturedKillSwitchHandler({ command: 'pause', reason: 'Test pause' });
       }
 
       const result = await agent.checkPermission('database:read');

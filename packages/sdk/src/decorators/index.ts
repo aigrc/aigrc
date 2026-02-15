@@ -143,9 +143,10 @@ export function setAgent<T extends object>(
 
 /**
  * Get the governed agent from a class instance
+ * @returns The governed agent or undefined if not set
  */
-export function getAgent<T extends object>(instance: T): GovernedAgent | null {
-  return (instance as Record<symbol, GovernedAgent>)[AGENT_SYMBOL] || null;
+export function getAgent<T extends object>(instance: T): GovernedAgent | undefined {
+  return (instance as Record<symbol, GovernedAgent>)[AGENT_SYMBOL] ?? undefined;
 }
 
 /**

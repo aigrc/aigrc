@@ -13,6 +13,15 @@ const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 describe('TelemetryManager', () => {
+  // Use fake timers for reliable timing tests
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   const mockIdentity: RuntimeIdentity = {
     instance_id: 'test-instance-123',
     asset_id: 'aigrc-2024-test',
@@ -263,10 +272,33 @@ describe('TelemetryManager', () => {
 
       telemetry.trackPermissionCheck({ action: 'test3', allowed: true });
 
-      // Wait for async flush
-      await new Promise(resolve => setTimeout(resolve, 50));
+      // Run all pending timers and microtasks for async flush
+      await vi.runAllTimersAsync();
 
       // Should have auto-flushed
+      expect(mockFetch).toHaveBeenCalled();
+    });
+
+    it('should flush on interval when configured', async () => {
+      telemetry = createTelemetryManager(
+        {
+          enabled: true,
+          endpoint: 'https://telemetry.aigos.io',
+          batchSize: 100, // High batch size to prevent auto-flush
+          flushInterval: 5000, // 5 second interval
+        },
+        mockIdentity
+      );
+
+      telemetry.trackPermissionCheck({ action: 'test1', allowed: true });
+
+      // Not flushed immediately
+      expect(mockFetch).not.toHaveBeenCalled();
+
+      // Advance time by flush interval
+      await vi.advanceTimersByTimeAsync(5000);
+
+      // Should have auto-flushed on interval
       expect(mockFetch).toHaveBeenCalled();
     });
   });

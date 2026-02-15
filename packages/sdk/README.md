@@ -319,11 +319,9 @@ const agent = await createGovernedAgent({
 
 | Mode | Description |
 |------|-------------|
-| `NORMAL` | Standard operation |
-| `DEGRADED` | Reduced capabilities |
-| `EMERGENCY` | Emergency-only operations |
-| `MAINTENANCE` | Maintenance mode |
-| `READ_ONLY` | Read-only operations |
+| `NORMAL` | Standard operation with full capabilities |
+| `SANDBOX` | Isolated sandbox mode for testing/development |
+| `RESTRICTED` | Restricted mode with limited capabilities |
 
 ## Examples
 
