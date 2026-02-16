@@ -1,0 +1,91 @@
+{
+  "name": "@aigos/sdk",
+  "version": "0.1.0",
+  "description": "Unified SDK for AIGOS - AI Governance Operating System. Provides createGovernedAgent(), @guard decorator, and Control Plane integration.",
+  "license": "Apache-2.0",
+  "author": "AIGOS <contact@aigos.dev>",
+  "homepage": "https://github.com/ai-gos/aigos#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ai-gos/aigos.git",
+    "directory": "packages/sdk"
+  },
+  "bugs": {
+    "url": "https://github.com/ai-gos/aigos/issues"
+  },
+  "keywords": [
+    "aigos",
+    "aigrc",
+    "ai-governance",
+    "runtime",
+    "sdk",
+    "guard",
+    "kill-switch",
+    "telemetry",
+    "control-plane",
+    "agent-governance"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./client": {
+      "types": "./dist/client/index.d.ts",
+      "import": "./dist/client/index.mjs",
+      "require": "./dist/client/index.js"
+    },
+    "./decorators": {
+      "types": "./dist/decorators/index.d.ts",
+      "import": "./dist/decorators/index.mjs",
+      "require": "./dist/decorators/index.js"
+    },
+    "./telemetry": {
+      "types": "./dist/telemetry/index.d.ts",
+      "import": "./dist/telemetry/index.mjs",
+      "require": "./dist/telemetry/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@aigrc/core": "^0.2.0",
+    "eventemitter3": "^5.0.1",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/uuid": "^9.0.0",
+    "rimraf": "^5.0.0",
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
+  },
+  "peerDependencies": {
+    "@opentelemetry/api": "^1.7.0"
+  },
+  "peerDependenciesMeta": {
+    "@opentelemetry/api": {
+      "optional": true
+    }
+  }
+}

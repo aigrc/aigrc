@@ -11,6 +11,9 @@ export { statusCommand } from "./status.js";
 export { hashCommand } from "./hash.js";
 export { versionCommand } from "./version.js";
 
+// CGA certification commands
+export { certifyCommand } from "./certify.js";
+
 // Multi-jurisdiction compliance commands
 export { complianceCommand } from "./compliance.js";
 export { classifyCommand } from "./classify.js";
