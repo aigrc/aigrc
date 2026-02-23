@@ -19,7 +19,7 @@ The open specification and developer toolkit for AI governance engineering.
 [![Spec](https://img.shields.io/badge/Spec-v1.0_Draft-8b7ec8?style=flat-square)](#specification)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)](CONTRIBUTING.md)
 
-[Website](https://aigos.dev) · [Field Guide](#-field-guide) · [Specification](#-specification) · [Quick Start](#-quick-start) · [Manifesto](MANIFESTO.md)
+[Website](https://aigrc.dev) · [Field Guide](#-field-guide) · [Specification](#-specification) · [Quick Start](#-quick-start) · [Manifesto](MANIFESTO.md)
 
 </div>
 
