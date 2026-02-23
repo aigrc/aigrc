@@ -29,7 +29,7 @@ The open specification and developer toolkit for AI governance engineering.
 
 Most AI governance today is **documentation theater**.
 
-Organizations build AI agents fast, write compliance documents later, and scramble at audit time. The evidence of what an AI system *actually did* is never collected at the moment of lowest cost — which is creation. We call this the **Truth Tax**: the compounding cost of retroactively verifying AI system behavior.
+Organizations build AI solutions and agents fast, write compliance documents later, and scramble at audit time. The evidence of what an AI system *actually did* is never collected at the moment of lowest cost — which is creation. We call this the **Truth Tax**: the compounding cost of retroactively verifying AI system behavior.
 
 Three things are true about AI governance that most governance tools ignore:
 
