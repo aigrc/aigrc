@@ -12,9 +12,9 @@
 
 We came from observability.
 
-We built the tools that told enterprises what their systems were doing in production — not what they *hoped* they were doing. Distributed tracing, metric pipelines, alerting systems. The unsexy infrastructure that prevents outages, catches regressions, and keeps billion-dollar platforms honest.
+We built the tools that told enterprises what their systems were doing in production — not what they *hoped* they were doing. Distributed tracing, metric pipelines, and alerting systems. The unsexy infrastructure that prevents outages, catches regressions, and keeps billion-dollar platforms honest.
 
-Then AI agents arrived.
+Then AI solutions and agents arrived.
 
 And the gap between organizational intent and system behavior became a chasm.
 
