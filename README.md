@@ -15,7 +15,7 @@ The open specification and developer toolkit for AI governance engineering.
 
 [![npm](https://img.shields.io/npm/v/@aigrc/cli?style=flat-square&label=CLI&color=1a1f4e)](https://www.npmjs.com/package/@aigrc/cli)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square)](LICENSE)
-[![AIGOS Platform](https://img.shields.io/badge/AIGOS-Platform-00a89d?style=flat-square)](https://aigos.dev)
+[![AIGRC Toolchain](https://img.shields.io/badge/AIGOS-Platform-00a89d?style=flat-square)](https://aigrc.dev)
 [![Spec](https://img.shields.io/badge/Spec-v1.0_Draft-8b7ec8?style=flat-square)](#specification)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)](CONTRIBUTING.md)
 
