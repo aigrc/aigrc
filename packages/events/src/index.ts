@@ -30,3 +30,27 @@ export { AigrcEventValidator, type ValidationResult } from "./validator";
 
 // ── Utilities ──
 export { canonicalize, sortKeysDeep } from "./utils";
+
+// ── Builder (Sprint 2) ──
+export {
+  GovernanceEventBuilder,
+  GovernanceEventValidationError,
+  type BuilderConfig,
+  type BaseEventParams,
+  type AssetEventParams,
+  type ScanEventParams,
+  type ClassificationEventParams,
+  type ComplianceEventParams,
+  type EnforcementEventParams,
+  type LifecycleEventParams,
+  type PolicyEventParams,
+  type AuditEventParams,
+} from "./builder";
+
+// ── Client (Sprint 2) ──
+export {
+  AigosClient,
+  AigosClientError,
+  AigosRateLimitError,
+  type ClientConfig,
+} from "./client";
