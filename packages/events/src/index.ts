@@ -47,10 +47,15 @@ export {
   type AuditEventParams,
 } from "./builder";
 
-// ── Client (Sprint 2) ──
+// ── Client (Sprint 2 + Sprint 4 retrieval) ──
 export {
   AigosClient,
   AigosClientError,
   AigosRateLimitError,
   type ClientConfig,
+  type EventListFilters,
+  type AssetListFilters,
 } from "./client";
+
+// ── Buffer (Sprint 3) ──
+export { EventBuffer, type BufferConfig } from "./buffer";

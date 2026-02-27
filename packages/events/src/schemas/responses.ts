@@ -152,3 +152,54 @@ export const BatchResponseSchema = z.object({
   results: z.array(BatchEventResultSchema),
 });
 export type BatchResponse = z.infer<typeof BatchResponseSchema>;
+
+// ─────────────────────────────────────────────────────────────────
+// RETRIEVAL RESPONSES (Sprint 4 — §9 Retrieval API)
+// ─────────────────────────────────────────────────────────────────
+
+import { GovernanceEventSchema } from "./event-envelope";
+
+/**
+ * Summary of an asset derived from its governance events.
+ */
+export const AssetSummarySchema = z.object({
+  /** Asset identifier */
+  assetId: z.string().min(1),
+  /** ISO 8601 timestamp of the most recent event for this asset */
+  lastEventAt: z.string().datetime(),
+  /** Total number of events for this asset */
+  eventCount: z.number().int().min(0),
+  /** Type of the most recent event */
+  latestType: z.string().min(1),
+});
+export type AssetSummary = z.infer<typeof AssetSummarySchema>;
+
+/**
+ * Paginated event list response.
+ */
+export const EventListResponseSchema = z.object({
+  /** Events matching the query */
+  events: z.array(GovernanceEventSchema),
+  /** Total count of matching events */
+  total: z.number().int().min(0),
+  /** Page size */
+  limit: z.number().int().min(0),
+  /** Page offset */
+  offset: z.number().int().min(0),
+});
+export type EventListResponse = z.infer<typeof EventListResponseSchema>;
+
+/**
+ * Paginated asset list response.
+ */
+export const AssetListResponseSchema = z.object({
+  /** Asset summaries */
+  assets: z.array(AssetSummarySchema),
+  /** Total count of assets */
+  total: z.number().int().min(0),
+  /** Page size */
+  limit: z.number().int().min(0),
+  /** Page offset */
+  offset: z.number().int().min(0),
+});
+export type AssetListResponse = z.infer<typeof AssetListResponseSchema>;

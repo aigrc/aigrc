@@ -59,6 +59,7 @@
   },
   "dependencies": {
     "@aigrc/core": "^0.2.0",
+    "@aigrc/events": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "cors": "^2.8.5",
     "express": "^5.0.1",

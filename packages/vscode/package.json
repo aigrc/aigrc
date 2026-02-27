@@ -52,6 +52,10 @@
       {
         "command": "aigrc.checkPolicy",
         "title": "AIGRC: Check Policy Violations"
+      },
+      {
+        "command": "aigrc.pushToAigos",
+        "title": "AIGRC: Push to AIGOS"
       }
     ],
     "views": {
@@ -99,6 +103,28 @@
           "type": "boolean",
           "default": true,
           "description": "Show policy violation diagnostics in editor"
+        },
+        "aigrc.push.auto": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically push events when asset cards change"
+        },
+        "aigrc.push.batchInterval": {
+          "type": "number",
+          "default": 5000,
+          "description": "Background push buffer flush interval in milliseconds"
+        },
+        "aigrc.push.apiUrl": {
+          "type": "string",
+          "description": "AIGOS API URL (e.g., https://api.aigos.dev/v1)"
+        },
+        "aigrc.push.apiKey": {
+          "type": "string",
+          "description": "AIGOS API key for event push authentication"
+        },
+        "aigrc.push.orgId": {
+          "type": "string",
+          "description": "Organization ID for event push"
         }
       }
     },
@@ -119,6 +145,7 @@
   },
   "dependencies": {
     "@aigrc/core": "workspace:*",
+    "@aigrc/events": "workspace:*",
     "@aigrc/i2e-firewall": "workspace:*",
     "yaml": "^2.3.4"
   },

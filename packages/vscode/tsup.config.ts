@@ -8,5 +8,5 @@ export default defineConfig({
   clean: true,
   sourcemap: true,
   external: ["vscode"],
-  noExternal: ["@aigrc/core", "yaml"],
+  noExternal: ["@aigrc/core", "@aigrc/events", "yaml"],
 });

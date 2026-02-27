@@ -11,6 +11,10 @@ export { statusCommand } from "./status.js";
 export { hashCommand } from "./hash.js";
 export { versionCommand } from "./version.js";
 
+// Control Plane sync commands
+export { pushCommand } from "./push.js";
+export { projectsCommand } from "./projects.js";
+
 // CGA certification commands
 export { certifyCommand } from "./certify.js";
 
@@ -23,3 +27,7 @@ export { reportCommand } from "./report.js";
 
 // I2E Policy Bridge commands
 export { policyCommand } from "./policy.js";
+
+// Governance Event commands
+export { eventsCommand } from "./events.js";
+export { pullCommand } from "./pull.js";

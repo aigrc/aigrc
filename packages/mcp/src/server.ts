@@ -20,6 +20,7 @@ import { getTools, executeTool } from "./tools/index.js";
 import { getResources, readResource } from "./resources/index.js";
 import { getPrompts, getPrompt } from "./prompts/index.js";
 import { createServices, Services } from "./services/index.js";
+import { EventPushService } from "./services/event-push.js";
 import {
   TelemetryService,
   createTelemetryService,
@@ -41,6 +42,9 @@ export interface AIGRCServer {
 export function createServer(config?: Partial<AIGRCConfig>): AIGRCServer {
   const fullConfig = { ...loadConfig(), ...config };
   const services = createServices(fullConfig);
+
+  // Initialize event push service (AIG-219)
+  const eventPushService = new EventPushService(fullConfig);
 
   // Initialize telemetry
   const telemetry = createTelemetryService(fullConfig);
@@ -77,7 +81,7 @@ export function createServer(config?: Partial<AIGRCConfig>): AIGRCServer {
     const startTime = Date.now();
 
     try {
-      const result = await executeTool(name, args || {}, services, fullConfig);
+      const result = await executeTool(name, args || {}, services, fullConfig, eventPushService);
       telemetry.record({
         type: "tool_call",
         toolName: name,

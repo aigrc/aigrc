@@ -1,5 +1,10 @@
 import type { GovernanceEvent } from "./schemas/event-envelope";
-import type { PushResponse, BatchResponse } from "./schemas/responses";
+import type {
+  PushResponse,
+  BatchResponse,
+  EventListResponse,
+  AssetListResponse,
+} from "./schemas/responses";
 
 // ─────────────────────────────────────────────────────────────────
 // TYPES
@@ -62,7 +67,37 @@ const DEFAULT_MAX_RETRIES = 3;
 const MAX_BATCH_SIZE = 1000;
 const SYNC_ENDPOINT = "/v1/events";
 const BATCH_ENDPOINT = "/v1/events/batch";
+const EVENTS_ENDPOINT = "/v1/events";
+const ASSETS_ENDPOINT = "/v1/assets";
 const HEALTH_ENDPOINT = "/v1/health";
+
+/**
+ * Filters for listing governance events.
+ */
+export interface EventListFilters {
+  /** Filter by asset ID */
+  assetId?: string;
+  /** Filter by event type */
+  type?: string;
+  /** Filter by criticality */
+  criticality?: string;
+  /** Filter events since this ISO 8601 timestamp */
+  since?: string;
+  /** Maximum number of events to return (default: 20, max: 100) */
+  limit?: number;
+  /** Offset for pagination */
+  offset?: number;
+}
+
+/**
+ * Filters for listing assets.
+ */
+export interface AssetListFilters {
+  /** Maximum number of assets to return (default: 20, max: 100) */
+  limit?: number;
+  /** Offset for pagination */
+  offset?: number;
+}
 
 // ─────────────────────────────────────────────────────────────────
 // CLIENT
@@ -279,6 +314,37 @@ export class AigosClient {
     }
   }
 
+  // ─── Retrieval API (Sprint 4) ─────────────────────────────────
+
+  /**
+   * List governance events for the authenticated org.
+   *
+   * @param filters — Optional filters (assetId, type, criticality, since, limit, offset)
+   */
+  async listEvents(filters?: EventListFilters): Promise<EventListResponse> {
+    const params = this.buildQueryString(filters);
+    return this.requestGet<EventListResponse>(`${EVENTS_ENDPOINT}${params}`);
+  }
+
+  /**
+   * Get a single governance event by ID.
+   *
+   * @throws AigosClientError with status 404 if not found
+   */
+  async getEvent(eventId: string): Promise<GovernanceEvent> {
+    return this.requestGet<GovernanceEvent>(`${EVENTS_ENDPOINT}/${eventId}`);
+  }
+
+  /**
+   * List unique assets for the authenticated org.
+   *
+   * @param filters — Optional pagination (limit, offset)
+   */
+  async listAssets(filters?: AssetListFilters): Promise<AssetListResponse> {
+    const params = this.buildQueryString(filters);
+    return this.requestGet<AssetListResponse>(`${ASSETS_ENDPOINT}${params}`);
+  }
+
   /**
    * Cancel any in-flight requests and clean up resources.
    */
@@ -379,6 +445,88 @@ export class AigosClient {
     }
 
     throw lastError ?? new Error("Request failed after retries");
+  }
+
+  /**
+   * Make a GET request with retry logic and error handling.
+   */
+  private async requestGet<T>(path: string): Promise<T> {
+    let lastError: Error | undefined;
+
+    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+      try {
+        this.abortController = new AbortController();
+        const timeoutId = setTimeout(
+          () => this.abortController?.abort(),
+          this.timeout
+        );
+
+        const response = await fetch(`${this.apiUrl}${path}`, {
+          method: "GET",
+          headers: this.buildHeaders(),
+          signal: this.abortController.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          return (await response.json()) as T;
+        }
+
+        if (response.status === 429) {
+          const retryAfter = parseInt(
+            response.headers.get("Retry-After") ?? "60",
+            10
+          );
+          throw new AigosRateLimitError(retryAfter, await this.safeJson(response));
+        }
+
+        if (response.status >= 400 && response.status < 500) {
+          throw new AigosClientError(response.status, await this.safeJson(response));
+        }
+
+        if (response.status >= 500) {
+          lastError = new AigosClientError(
+            response.status,
+            await this.safeJson(response)
+          );
+          if (attempt < this.maxRetries) {
+            await this.sleep(Math.pow(2, attempt) * 1000);
+            continue;
+          }
+        }
+      } catch (error) {
+        if (error instanceof AigosClientError) throw error;
+        if (error instanceof DOMException && error.name === "AbortError") {
+          lastError = new AigosClientError(0, undefined, `Request timed out after ${this.timeout}ms`);
+        } else {
+          lastError = error instanceof Error ? error : new Error(String(error));
+        }
+        if (attempt < this.maxRetries) {
+          await this.sleep(Math.pow(2, attempt) * 1000);
+          continue;
+        }
+      }
+    }
+
+    throw lastError ?? new Error("Request failed after retries");
+  }
+
+  /**
+   * Build a query string from filter parameters.
+   */
+  private buildQueryString(filters?: EventListFilters | AssetListFilters): string {
+    if (!filters) return "";
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(filters as Record<string, unknown>)) {
+      if (value !== undefined && value !== null) {
+        // Convert camelCase to snake_case for API
+        const apiKey = key.replace(/[A-Z]/g, (m) => `_${m.toLowerCase()}`);
+        params.set(apiKey, String(value));
+      }
+    }
+    const str = params.toString();
+    return str ? `?${str}` : "";
   }
 
   /**

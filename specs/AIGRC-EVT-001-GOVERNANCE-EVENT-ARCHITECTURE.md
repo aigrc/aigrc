@@ -1,6 +1,6 @@
 # AIGRC-EVT-001: Governance Event Architecture
 
-**Version:** 0.1.0
+**Version:** 0.2.0
 **Status:** Draft
 **Authors:** AIGRC Core Team
 **Created:** 2026-02-24
@@ -27,6 +27,12 @@ Every action that changes an AI asset's governance state (creation, scanning, cl
 - Real-time streaming protocol (WebSocket channel is Phase 2)
 - Cross-organization event federation
 - Event schema versioning/migration tooling
+
+### 1.3 Related Specifications
+
+| Spec ID | Title | Relationship |
+|---------|-------|-------------|
+| AIGRC-API-001 | AIGOS Control Plane API | Defines the HTTP endpoints that implement this event architecture |
 
 ---
 
@@ -137,6 +143,52 @@ evt_[a-f0-9]{32}
 ```
 
 Always lowercase hex. Total length: 36 characters (4 prefix + 32 hex).
+
+### 4.4 Producer Buffering
+
+Producers buffer events locally before transmission. Two buffering tiers accommodate different reliability requirements:
+
+#### Tier 1 — Durable Buffer
+
+Used by: `runtime-sdk`, `i2e-firewall`
+
+- Disk-backed write-ahead log (WAL)
+- Survives process crashes and restarts
+- At-least-once delivery guarantee
+- Configurable max size and flush interval
+
+#### Tier 2 — Best-Effort Buffer
+
+Used by: `cli`, `vscode`, `github-action`, `mcp-server`, `i2e-bridge`
+
+- In-memory buffer with configurable capacity (default: 1000 events)
+- Automatic flush at interval (default: 10s) or when buffer is full
+- Critical events trigger immediate flush (`flushOnCritical`)
+- Lost on process crash (acceptable for interactive tools)
+
+#### Buffer Configuration
+
+```typescript
+interface BufferConfig {
+  /** AigosClient configuration */
+  client: ClientConfig;
+  /** Maximum events before forced flush (default: 1000) */
+  maxSize?: number;
+  /** Flush interval in ms (default: 10000) */
+  flushIntervalMs?: number;
+  /** Immediately flush critical events (default: true) */
+  flushOnCritical?: boolean;
+  /** Error callback for failed flushes */
+  onFlushError?: (error: Error) => void;
+}
+```
+
+#### Buffer Lifecycle
+
+1. `add(event)` / `addMany(events)` — Enqueue events
+2. Automatic flush when `maxSize` reached or interval expires
+3. Critical events bypass buffer when `flushOnCritical` is true
+4. `dispose()` — Final flush + cleanup (must be called on shutdown)
 
 ---
 
@@ -257,6 +309,129 @@ Fields: `reason` (`discovery` | `pre-authorization` | `legacy-migration` | `emer
 
 ---
 
+## 7. Policy Evaluation
+
+When a governance event is pushed via the Sync Channel (POST /v1/events), the control plane evaluates the event against the organization's active policy bundle and returns feedback in the PushResponse.
+
+**Note:** Batch Channel (POST /v1/events/batch) does NOT perform policy evaluation — it is optimized for high-throughput ingestion.
+
+### 7.1 Evaluated Event Types
+
+Only the following event types trigger policy evaluation:
+
+| Event Type | Evaluation |
+|-----------|-----------|
+| `aigrc.asset.created` | Full evaluation |
+| `aigrc.asset.updated` | Full evaluation |
+| `aigrc.scan.completed` | Full evaluation |
+| `aigrc.classification.changed` | Full evaluation |
+| All other types | Skipped (no evaluation) |
+
+### 7.2 Policy Bundles
+
+A policy bundle is a set of rules scoped to an organization:
+
+```typescript
+interface PolicyBundle {
+  id: string;
+  orgId: string;
+  rules: PolicyRule[];
+  conformanceTarget?: "BRONZE" | "SILVER" | "GOLD";
+  waivers: PolicyWaiver[];
+}
+
+interface PolicyRule {
+  id: string;
+  name: string;
+  severity: "blocking" | "warning";
+  description: string;
+  remediation: string;
+  appliesTo: string[];    // Event types this rule evaluates
+  check: string;          // Built-in rule engine check name
+}
+```
+
+### 7.3 Built-in Rule Checks
+
+| Check | Description | Default Severity |
+|-------|------------|-----------------|
+| `golden-thread-required` | Event must have a linked golden thread | blocking |
+| `golden-thread-linked` | Warns if golden thread is orphan | warning |
+| `signature-required` | Event must have a cryptographic signature | blocking |
+| `high-criticality-needs-signature` | High/critical events must be signed | warning |
+| `data-not-empty` | Event data must have at least one field | blocking |
+| `previous-hash-chain` | Event should include previousHash for chain integrity | warning |
+| `correlation-id-required` | Event should include correlationId | warning |
+
+### 7.4 PolicyResult
+
+Returned in PushResponse when evaluation occurs:
+
+```json
+{
+  "policyResult": {
+    "evaluated": true,
+    "passed": true,
+    "bundleId": "bundle-001",
+    "violations": [],
+    "waivers": []
+  }
+}
+```
+
+- `evaluated: true` — Policy bundle was active and event type was eligible
+- `passed: false` — At least one blocking violation was found
+- `violations[]` — PolicyViolation objects with ruleId, severity, description, remediation
+- `waivers[]` — Active waivers that suppressed matching violations
+
+### 7.5 Conformance Gaps
+
+When an organization has a `conformanceTarget` set, additional checks detect gaps between current practices and the target level:
+
+| Target | Required Capabilities |
+|--------|----------------------|
+| BRONZE | All events validated and stored |
+| SILVER | BRONZE + signature on events, correlationId tracking |
+| GOLD | SILVER + previousHash chain linking, full audit trail |
+
+### 7.6 Governance Warnings
+
+Non-blocking warnings alerting producers to governance health issues:
+
+| Warning Code | Trigger | Severity |
+|-------------|---------|----------|
+| `ORPHAN_DEADLINE_APPROACHING` | Orphan remediation deadline < 7 days away | warning |
+| `ORPHAN_OVERDUE` | Orphan remediation deadline has passed | urgent |
+| `THREAD_STALE` | Linked thread not verified in > 30 days | warning |
+| `THREAD_INACTIVE` | Linked thread has non-active/completed status | info |
+
+### 7.7 Suggestions
+
+Platform intelligence suggestions (never blocking):
+
+| Suggestion Code | Trigger |
+|----------------|---------|
+| `SUGGEST_LINK_THREAD` | Orphan golden thread → suggest linking |
+| `SUGGEST_CORRELATION_ID` | Missing correlationId → suggest adding |
+| `SUGGEST_SIGN_HIGH_CRIT` | High/critical event unsigned → suggest signing |
+
+### 7.8 Waivers
+
+Active waivers can suppress specific policy violations:
+
+```typescript
+interface PolicyWaiver {
+  ruleId: string;        // Rule to waive
+  waivedBy: string;      // Who authorized the waiver
+  expiresAt: string;     // ISO 8601 expiration
+  reason: string;        // Justification
+}
+```
+
+Expired waivers are ignored during evaluation. Waived violations are removed from the violations array but the waiver is reported in the response.
+
+---
+
 ## 8. Producer Tools
 
 Eight tool types can produce governance events:
@@ -290,6 +465,97 @@ Eight tool types can produce governance events:
 
 Identity types: `api-key`, `oauth`, `agent-token`, `service-token`.
 Environments: `development`, `staging`, `production`, `ci`.
+
+---
+
+## 9. Retrieval API
+
+The Retrieval API provides read access to governance events and asset summaries. All endpoints require Bearer token authentication and are org-scoped (events are filtered by the authenticated organization's ID).
+
+### 9.1 List Events
+
+**`GET /v1/events`** — Paginated list of governance events.
+
+Query Parameters:
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `asset_id` | string | — | Filter by asset ID |
+| `type` | string | — | Filter by event type |
+| `criticality` | string | — | Filter by criticality level |
+| `since` | string | — | ISO 8601 timestamp, return events after this time |
+| `limit` | integer | 20 | Page size (max: 100) |
+| `offset` | integer | 0 | Pagination offset |
+
+Response (200 OK):
+
+```json
+{
+  "events": [GovernanceEvent, ...],
+  "total": 42,
+  "limit": 20,
+  "offset": 0
+}
+```
+
+### 9.2 Get Single Event
+
+**`GET /v1/events/:id`** — Retrieve a single event by ID.
+
+Response (200 OK): GovernanceEvent object.
+
+Error responses:
+- 404 Not Found — Event does not exist or belongs to a different organization (returns 404 instead of 403 to prevent enumeration attacks)
+- 401 Unauthorized — No valid authentication
+
+### 9.3 List Assets
+
+**`GET /v1/assets`** — Paginated list of unique asset summaries derived from events.
+
+Query Parameters:
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `limit` | integer | 20 | Page size (max: 100) |
+| `offset` | integer | 0 | Pagination offset |
+
+Response (200 OK):
+
+```json
+{
+  "assets": [
+    {
+      "assetId": "agent-001",
+      "lastEventAt": "2026-02-24T12:00:00Z",
+      "eventCount": 5,
+      "latestType": "aigrc.asset.updated"
+    }
+  ],
+  "total": 1,
+  "limit": 20,
+  "offset": 0
+}
+```
+
+### 9.4 List Asset Events
+
+**`GET /v1/assets/:assetId/events`** — Events for a specific asset.
+
+Supports the same query parameters as `GET /v1/events` (except `asset_id`, which is implicit from the URL path).
+
+### 9.5 Health Check
+
+**`GET /v1/health`** — Service health endpoint (no authentication required).
+
+Response (200 OK):
+
+```json
+{
+  "status": "ok",
+  "version": "0.2.0",
+  "routes": ["/v1/events", "/v1/events/batch", "/v1/health", "/v1/assets"]
+}
+```
 
 ---
 
@@ -441,4 +707,5 @@ See §10.2 for the complete 15-code error catalog.
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 0.2.0 | 2026-02-24 | Added §4.4 Producer Buffering, §7 Policy Evaluation, §9 Retrieval API, §1.3 Related Specifications |
 | 0.1.0 | 2026-02-24 | Initial draft — envelope, identity, taxonomy, validation, hashing |
