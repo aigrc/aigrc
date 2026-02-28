@@ -88,16 +88,16 @@ importers:
   packages/cli:
     dependencies:
       '@aigrc/core':
-        specifier: ^0.2.0
+        specifier: ^3.1.0
         version: link:../core
       '@aigrc/events':
         specifier: workspace:*
         version: link:../events
       '@aigrc/i2e-bridge':
-        specifier: ^0.1.0
+        specifier: ^3.1.0
         version: link:../i2e-bridge
       '@aigrc/i2e-firewall':
-        specifier: ^0.1.0
+        specifier: ^3.1.0
         version: link:../i2e-firewall
       '@supabase/supabase-js':
         specifier: ^2.45.0
@@ -412,7 +412,7 @@ importers:
   packages/i2e-bridge:
     dependencies:
       '@aigrc/core':
-        specifier: ^0.2.0
+        specifier: ^3.1.0
         version: link:../core
       mammoth:
         specifier: ^1.8.0
@@ -446,7 +446,7 @@ importers:
   packages/i2e-firewall:
     dependencies:
       '@aigrc/core':
-        specifier: ^0.2.0
+        specifier: ^3.1.0
         version: link:../core
       glob:
         specifier: ^10.3.10
@@ -483,7 +483,7 @@ importers:
   packages/mcp:
     dependencies:
       '@aigrc/core':
-        specifier: ^0.2.0
+        specifier: ^3.1.0
         version: link:../core
       '@aigrc/events':
         specifier: workspace:*
@@ -557,7 +557,7 @@ importers:
   packages/sdk:
     dependencies:
       '@aigrc/core':
-        specifier: ^0.2.0
+        specifier: ^3.1.0
         version: link:../core
       '@opentelemetry/api':
         specifier: ^1.7.0
