@@ -47,7 +47,7 @@ jobs:
         uses: changesets/action@v1
         with:
           publish: pnpm changeset publish
-          version: pnpm changeset version && pnpm install --lockfile-only
+          version: pnpm run version-packages
           commit: "chore: release packages"
           title: "chore: release packages"
         env:

@@ -15,7 +15,8 @@
     "test": "turbo test",
     "typecheck": "turbo typecheck",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
-    "clean": "turbo clean"
+    "clean": "turbo clean",
+    "version-packages": "pnpm changeset version && pnpm install --lockfile-only"
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.0",
