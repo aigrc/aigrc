@@ -16,7 +16,7 @@
  *
  * @example
  * ```typescript
- * import { createCapabilityDecayManager } from '@aigos/runtime';
+ * import { createCapabilityDecayManager } from '@aigrc/runtime';
  *
  * const capabilityManager = createCapabilityDecayManager({
  *   defaultMode: 'decay',

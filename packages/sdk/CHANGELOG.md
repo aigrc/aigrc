@@ -1,4 +1,4 @@
-# @aigos/sdk
+# @aigrc/sdk
 
 ## 0.1.1
 

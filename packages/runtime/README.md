@@ -1,4 +1,4 @@
-# @aigos/runtime
+# @aigrc/runtime
 
 Runtime Governance System for AI Agents - Identity Manager, Policy Engine ("The Bouncer"), and Runtime Controls.
 
@@ -13,7 +13,7 @@ Runtime Governance System for AI Agents - Identity Manager, Policy Engine ("The 
 ## Installation
 
 ```bash
-pnpm add @aigos/runtime
+pnpm add @aigrc/runtime
 ```
 
 ## Quick Start
@@ -24,7 +24,7 @@ import {
   createPolicyEngine,
   configureGuard,
   guard,
-} from '@aigos/runtime';
+} from '@aigrc/runtime';
 
 // Create managers
 const identityManager = createIdentityManager({
@@ -145,7 +145,7 @@ policyEngine.updateKillSwitch('PAUSE', { assetId: 'dangerous-agent' });
 Protect functions with policy checks:
 
 ```typescript
-import { guard, guardAsync, checkGuard } from '@aigos/runtime';
+import { guard, guardAsync, checkGuard } from '@aigrc/runtime';
 
 // Using decorator
 class MyAgent {

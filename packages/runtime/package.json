@@ -1,5 +1,5 @@
 {
-  "name": "@aigos/runtime",
+  "name": "@aigrc/runtime",
   "version": "0.1.1",
   "description": "AIGOS Runtime Governance System - Identity Manager, Policy Engine, and Runtime Controls",
   "type": "module",
@@ -94,8 +94,12 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/pangolabs/aigos.git",
+    "url": "https://github.com/aigrc/aigrc.git",
     "directory": "packages/runtime"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "engines": {
     "node": ">=18.0.0"

@@ -1,5 +1,5 @@
 /**
- * @aigos/sdk - Guard Decorator Tests
+ * @aigrc/sdk - Guard Decorator Tests
  *
  * Unit tests for the @guard decorator and related utilities
  */

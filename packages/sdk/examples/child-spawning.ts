@@ -1,5 +1,5 @@
 /**
- * @aigos/sdk - Child Agent Spawning Example
+ * @aigrc/sdk - Child Agent Spawning Example
  *
  * This example demonstrates hierarchical agent spawning
  * with capability decay and lineage tracking.
@@ -7,8 +7,8 @@
  * Run with: npx tsx examples/child-spawning.ts
  */
 
-import { createGovernedAgent } from '@aigos/sdk';
-import type { GovernedAgent } from '@aigos/sdk';
+import { createGovernedAgent } from '@aigrc/sdk';
+import type { GovernedAgent } from '@aigrc/sdk';
 
 async function printAgentInfo(agent: GovernedAgent, indent = 0) {
   const pad = '  '.repeat(indent);

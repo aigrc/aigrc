@@ -40,7 +40,7 @@ jobs:
         run: pnpm run build
 
       - name: Run tests
-        run: pnpm turbo test --filter='!@aigos/sdk'
+        run: pnpm turbo test --filter='!@aigrc/sdk'
 
       - name: Create Release Pull Request or Publish
         id: changesets

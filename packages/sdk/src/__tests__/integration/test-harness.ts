@@ -1,5 +1,5 @@
 /**
- * @aigos/sdk - Integration Test Harness
+ * @aigrc/sdk - Integration Test Harness
  *
  * Provides utilities for integration testing governed agents
  * with mock Control Plane, telemetry collection, and assertion helpers.

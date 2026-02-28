@@ -1,5 +1,5 @@
 /**
- * @aigos/sdk - Golden Thread Example
+ * @aigrc/sdk - Golden Thread Example
  *
  * This example demonstrates the Golden Thread Protocol -
  * cryptographically linking runtime agent instances back to
@@ -8,7 +8,7 @@
  * Run with: npx tsx examples/golden-thread.ts
  */
 
-import { createGovernedAgent } from '@aigos/sdk';
+import { createGovernedAgent } from '@aigrc/sdk';
 import type { GoldenThread } from '@aigrc/core';
 import * as crypto from 'crypto';
 

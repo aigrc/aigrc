@@ -1,5 +1,5 @@
 /**
- * @aigos/sdk - Governed Agent Factory
+ * @aigrc/sdk - Governed Agent Factory
  *
  * The primary entry point for creating governed agents with
  * full policy enforcement, telemetry, and Control Plane integration.

@@ -1,5 +1,5 @@
 /**
- * @aigos/sdk - Control Plane Integration Example
+ * @aigrc/sdk - Control Plane Integration Example
  *
  * This example demonstrates connecting to the AIGOS Control Plane
  * for centralized policy management, HITL approvals, and kill switch.
@@ -7,8 +7,8 @@
  * Run with: npx tsx examples/control-plane-integration.ts
  */
 
-import { createGovernedAgent } from '@aigos/sdk';
-import type { GovernedAgent, KillSwitchCommand } from '@aigos/sdk';
+import { createGovernedAgent } from '@aigrc/sdk';
+import type { GovernedAgent, KillSwitchCommand } from '@aigrc/sdk';
 
 // Environment configuration
 const CONTROL_PLANE_URL = process.env.AIGOS_CONTROL_PLANE || 'https://cp.aigos.io';

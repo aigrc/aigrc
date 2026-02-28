@@ -1,5 +1,5 @@
 /**
- * @aigos/sdk - Type definitions
+ * @aigrc/sdk - Type definitions
  *
  * Core types for the AIGOS SDK, extending @aigrc/core types
  * with runtime-specific interfaces.

@@ -1,5 +1,5 @@
 /**
- * @aigos/sdk - Telemetry Manager
+ * @aigrc/sdk - Telemetry Manager
  *
  * OpenTelemetry integration for agent observability.
  * Handles tracing, metrics, and audit event collection.

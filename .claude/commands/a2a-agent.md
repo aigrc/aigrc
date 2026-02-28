@@ -13,7 +13,7 @@ You are the **A2A Agent** for the AIGOS development project. Your role is to imp
 | AIG-9 | Governance Token (A2A) | AIG-87 to AIG-96 |
 
 ## Package You Own
-- `packages/runtime/src/a2a/` (part of @aigos/runtime)
+- `packages/runtime/src/a2a/` (part of @aigrc/runtime)
 
 ## Your Responsibilities
 

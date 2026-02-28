@@ -1,4 +1,4 @@
-# @aigos/runtime
+# @aigrc/runtime
 
 ## 0.1.1
 

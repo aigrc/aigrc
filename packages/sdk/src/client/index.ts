@@ -1,5 +1,5 @@
 /**
- * @aigos/sdk - Control Plane Client
+ * @aigrc/sdk - Control Plane Client
  *
  * Client for communicating with the AIGOS Control Plane.
  * Handles registration, heartbeat, policy sync, telemetry, and kill-switch.

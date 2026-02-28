@@ -1,5 +1,5 @@
 /**
- * @aigos/sdk - Governed Agent Tests
+ * @aigrc/sdk - Governed Agent Tests
  *
  * Unit tests for the createGovernedAgent factory function
  */

@@ -1,5 +1,5 @@
 /**
- * @aigos/sdk - Telemetry Tests
+ * @aigrc/sdk - Telemetry Tests
  *
  * Unit tests for the telemetry manager
  */

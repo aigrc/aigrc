@@ -71,7 +71,7 @@ This package is designed to integrate with the AIGRC ecosystem:
               ┌────────────────────────────────┐
               │        AIGRC Backend           │
               │  - @aigrc/core (detection)     │
-              │  - @aigos/runtime (governance) │
+              │  - @aigrc/runtime (governance) │
               │  - Policy engine               │
               └────────────────────────────────┘
 ```
@@ -142,4 +142,4 @@ Apache-2.0
 
 - [@aigrc/core](../core) - Core detection and classification engine
 - [@aigrc/cli](../cli) - Command-line interface
-- [@aigos/runtime](../../aigos/packages/runtime) - Runtime governance layer
+- [@aigrc/runtime](../../aigos/packages/runtime) - Runtime governance layer

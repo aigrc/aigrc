@@ -1,5 +1,5 @@
 /**
- * @aigos/sdk - Unified SDK for AI Governance Operating System
+ * @aigrc/sdk - Unified SDK for AI Governance Operating System
  *
  * The primary entry point for developers building governed AI agents.
  * Provides runtime governance, policy enforcement, telemetry, and
@@ -7,7 +7,7 @@
  *
  * @example
  * ```typescript
- * import { createGovernedAgent, guard, setAgent } from "@aigos/sdk";
+ * import { createGovernedAgent, guard, setAgent } from "@aigrc/sdk";
  *
  * // Create a governed agent
  * const agent = await createGovernedAgent({
@@ -97,4 +97,4 @@ export const VERSION = "0.1.0";
 /**
  * SDK Name
  */
-export const SDK_NAME = "@aigos/sdk";
+export const SDK_NAME = "@aigrc/sdk";

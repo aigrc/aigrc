@@ -1,13 +1,13 @@
-# @aigos/sdk
+# @aigrc/sdk
 
 > The unified SDK for building governed AI agents with the AI Governance Operating System (AIGOS)
 
-[![npm version](https://img.shields.io/npm/v/@aigos/sdk.svg)](https://www.npmjs.com/package/@aigos/sdk)
+[![npm version](https://img.shields.io/npm/v/@aigrc/sdk.svg)](https://www.npmjs.com/package/@aigrc/sdk)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
 ## Overview
 
-`@aigos/sdk` provides everything you need to build AI agents with built-in governance, policy enforcement, and compliance. It integrates seamlessly with the AIGOS Control Plane for centralized management, HITL (Human-in-the-Loop) approvals, and kill switch capabilities.
+`@aigrc/sdk` provides everything you need to build AI agents with built-in governance, policy enforcement, and compliance. It integrates seamlessly with the AIGOS Control Plane for centralized management, HITL (Human-in-the-Loop) approvals, and kill switch capabilities.
 
 ### Key Features
 
@@ -22,11 +22,11 @@
 ## Installation
 
 ```bash
-npm install @aigos/sdk
+npm install @aigrc/sdk
 # or
-pnpm add @aigos/sdk
+pnpm add @aigrc/sdk
 # or
-yarn add @aigos/sdk
+yarn add @aigrc/sdk
 ```
 
 ## Quick Start
@@ -34,7 +34,7 @@ yarn add @aigos/sdk
 ### Basic Agent
 
 ```typescript
-import { createGovernedAgent } from '@aigos/sdk';
+import { createGovernedAgent } from '@aigrc/sdk';
 
 // Create a governed agent
 const agent = await createGovernedAgent({
@@ -62,7 +62,7 @@ await agent.shutdown();
 ### Using the @guard Decorator
 
 ```typescript
-import { createGovernedAgent, guard, setAgent } from '@aigos/sdk';
+import { createGovernedAgent, guard, setAgent } from '@aigrc/sdk';
 
 class UserService {
   @guard({ action: 'database:read', resource: 'users' })
@@ -354,4 +354,4 @@ Apache-2.0 - See [LICENSE](LICENSE) for details.
 
 - 📖 [Documentation](https://docs.aigos.dev)
 - 💬 [Discord Community](https://discord.gg/aigos)
-- 🐛 [Issue Tracker](https://github.com/ai-gos/aigos/issues)
+- 🐛 [Issue Tracker](https://github.com/aigrc/aigrc/issues)

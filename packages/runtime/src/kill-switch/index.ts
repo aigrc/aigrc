@@ -16,7 +16,7 @@
  *
  * @example
  * ```typescript
- * import { createKillSwitchReceiver } from '@aigos/runtime';
+ * import { createKillSwitchReceiver } from '@aigrc/runtime';
  *
  * const killSwitch = createKillSwitchReceiver({
  *   enabled: true,

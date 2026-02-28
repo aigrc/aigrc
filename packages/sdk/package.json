@@ -1,17 +1,17 @@
 {
-  "name": "@aigos/sdk",
+  "name": "@aigrc/sdk",
   "version": "0.1.1",
   "description": "Unified SDK for AIGOS - AI Governance Operating System. Provides createGovernedAgent(), @guard decorator, and Control Plane integration.",
   "license": "Apache-2.0",
-  "author": "AIGOS <contact@aigos.dev>",
-  "homepage": "https://github.com/ai-gos/aigos#readme",
+  "author": "Pango Labs",
+  "homepage": "https://github.com/aigrc/aigrc#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ai-gos/aigos.git",
+    "url": "git+https://github.com/aigrc/aigrc.git",
     "directory": "packages/sdk"
   },
   "bugs": {
-    "url": "https://github.com/ai-gos/aigos/issues"
+    "url": "https://github.com/aigrc/aigrc/issues"
   },
   "keywords": [
     "aigos",

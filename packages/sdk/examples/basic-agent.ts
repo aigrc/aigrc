@@ -1,5 +1,5 @@
 /**
- * @aigos/sdk - Basic Agent Example
+ * @aigrc/sdk - Basic Agent Example
  *
  * This example demonstrates how to create a simple governed agent
  * with basic permission checking and lifecycle management.
@@ -7,7 +7,7 @@
  * Run with: npx tsx examples/basic-agent.ts
  */
 
-import { createGovernedAgent } from '@aigos/sdk';
+import { createGovernedAgent } from '@aigrc/sdk';
 
 async function main() {
   console.log('🚀 Creating governed agent...\n');

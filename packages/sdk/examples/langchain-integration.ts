@@ -1,5 +1,5 @@
 /**
- * @aigos/sdk - LangChain Integration Example
+ * @aigrc/sdk - LangChain Integration Example
  *
  * This example demonstrates how to integrate AIGOS governance
  * with LangChain agents for AI-powered workflows.
@@ -10,8 +10,8 @@
  * would require the @langchain/core package.
  */
 
-import { createGovernedAgent, guard, setAgent, withGuard } from '@aigos/sdk';
-import type { GovernedAgent } from '@aigos/sdk';
+import { createGovernedAgent, guard, setAgent, withGuard } from '@aigrc/sdk';
+import type { GovernedAgent } from '@aigrc/sdk';
 
 // Simulated LangChain tool interface
 interface Tool {

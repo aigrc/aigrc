@@ -1,5 +1,5 @@
 /**
- * @aigos/sdk - Control Plane Client Tests
+ * @aigrc/sdk - Control Plane Client Tests
  *
  * Unit tests for the Control Plane client
  */

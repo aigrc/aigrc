@@ -1,5 +1,5 @@
 /**
- * @aigos/sdk - Guard Decorator
+ * @aigrc/sdk - Guard Decorator
  *
  * Method-level governance enforcement using TypeScript decorators.
  * Automatically checks permissions before method execution.
@@ -14,7 +14,7 @@ import type {
 } from "../types/index.js";
 
 // Symbol for storing agent reference on class instances
-const AGENT_SYMBOL = Symbol("@aigos/agent");
+const AGENT_SYMBOL = Symbol("@aigrc/agent");
 
 /**
  * Guard decorator for method-level governance enforcement.

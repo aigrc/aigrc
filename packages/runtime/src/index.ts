@@ -1,5 +1,5 @@
 /**
- * @aigos/runtime - Runtime Governance System
+ * @aigrc/runtime - Runtime Governance System
  *
  * AIGOS Runtime provides:
  * - Identity Manager (SPEC-RT-002): Cryptographic identity for AI agents
@@ -18,7 +18,7 @@
  *   createCapabilityDecayManager,
  *   configureGuard,
  *   guard,
- * } from '@aigos/runtime';
+ * } from '@aigrc/runtime';
  *
  * // Create managers
  * const identityManager = createIdentityManager();

@@ -1,5 +1,5 @@
 /**
- * @aigos/sdk - Guard Decorator Example
+ * @aigrc/sdk - Guard Decorator Example
  *
  * This example demonstrates how to use the @guard decorator
  * for method-level governance in class-based services.
@@ -7,7 +7,7 @@
  * Run with: npx tsx examples/guard-decorator.ts
  */
 
-import { createGovernedAgent, guard, setAgent } from '@aigos/sdk';
+import { createGovernedAgent, guard, setAgent } from '@aigrc/sdk';
 
 // Define a service with governed methods
 class UserService {

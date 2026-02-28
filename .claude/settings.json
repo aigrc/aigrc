@@ -31,7 +31,7 @@
       "name": "Runtime Agent",
       "role": "executor",
       "epics": ["AIG-4", "AIG-5", "AIG-6", "AIG-7", "AIG-8"],
-      "packages": ["@aigos/runtime"]
+      "packages": ["@aigrc/runtime"]
     },
     "cli-agent": {
       "name": "CLI Agent",
@@ -43,7 +43,7 @@
       "name": "A2A Agent",
       "role": "executor",
       "epics": ["AIG-9"],
-      "packages": ["@aigos/runtime/a2a"]
+      "packages": ["@aigrc/runtime/a2a"]
     },
     "license-agent": {
       "name": "License Agent",

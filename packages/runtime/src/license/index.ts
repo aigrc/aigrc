@@ -5,7 +5,7 @@
  *
  * @example
  * ```typescript
- * import { createLicenseManager, TIER_FEATURES } from '@aigos/runtime/license';
+ * import { createLicenseManager, TIER_FEATURES } from '@aigrc/runtime/license';
  *
  * const licenseManager = createLicenseManager({
  *   jwksEndpoint: 'https://license.aigos.dev/.well-known/jwks.json',

@@ -13,7 +13,7 @@
  *
  * @example
  * ```typescript
- * import { createTelemetryEmitter, AIGOS_ATTR, SPAN_NAMES } from '@aigos/runtime';
+ * import { createTelemetryEmitter, AIGOS_ATTR, SPAN_NAMES } from '@aigrc/runtime';
  *
  * const telemetry = createTelemetryEmitter({
  *   enabled: true,

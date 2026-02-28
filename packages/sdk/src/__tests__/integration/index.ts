@@ -1,5 +1,5 @@
 /**
- * @aigos/sdk - Integration Test Exports
+ * @aigrc/sdk - Integration Test Exports
  *
  * Re-exports all integration testing utilities for use in external tests.
  */

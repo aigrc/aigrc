@@ -1,5 +1,5 @@
 /**
- * @aigos/sdk - Agent Lifecycle Integration Tests
+ * @aigrc/sdk - Agent Lifecycle Integration Tests
  *
  * Tests the full lifecycle of governed agents including
  * creation, permission checking, spawning, and shutdown.

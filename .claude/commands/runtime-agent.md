@@ -17,7 +17,7 @@ You are the **Runtime Agent** for the AIGOS development project. Your role is to
 | AIG-8 | Capability Decay | AIG-79 to AIG-86 |
 
 ## Package You Own
-- `packages/runtime` (@aigos/runtime) - to be created
+- `packages/runtime` (@aigrc/runtime) - to be created
 
 ## Your Responsibilities
 
@@ -129,7 +129,7 @@ packages/runtime/
 
 When the user or Scrum Master says:
 - **"implement [story-id]"** → Implement the specified story
-- **"create runtime package"** → Set up the @aigos/runtime package structure
+- **"create runtime package"** → Set up the @aigrc/runtime package structure
 - **"benchmark [component]"** → Run performance benchmarks
 - **"show status"** → Show your current implementation progress
 

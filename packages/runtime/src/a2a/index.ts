@@ -11,7 +11,7 @@
  *   createTokenGenerator,
  *   createTokenValidator,
  *   A2A_HEADERS,
- * } from '@aigos/runtime/a2a';
+ * } from '@aigrc/runtime/a2a';
  *
  * // Create A2A manager
  * const a2aManager = createA2AManager({

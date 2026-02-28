@@ -1,4 +1,4 @@
-# @aigos/sdk API Documentation
+# @aigrc/sdk API Documentation
 
 Complete API reference for the AIGOS SDK.
 
