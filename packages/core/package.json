@@ -1,6 +1,6 @@
 {
   "name": "@aigrc/core",
-  "version": "0.2.0",
+  "version": "3.1.0",
   "description": "Core logic for AIGRC - schemas, validation, risk classification",
   "license": "Apache-2.0",
   "author": "AIGRC <contact@aigrc.dev>",
@@ -57,7 +57,9 @@
       "require": "./dist/governance-lock/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",

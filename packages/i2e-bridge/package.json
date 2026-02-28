@@ -1,6 +1,6 @@
 {
   "name": "@aigrc/i2e-bridge",
-  "version": "0.1.0",
+  "version": "3.1.0",
   "description": "I2E Policy Bridge - Document ingestion and policy compilation for AIGRC",
   "license": "Apache-2.0",
   "author": "AIGRC <contact@aigrc.dev>",
@@ -49,7 +49,9 @@
       "require": "./dist/compiler/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
@@ -58,7 +60,7 @@
     "clean": "rimraf dist"
   },
   "dependencies": {
-    "@aigrc/core": "^0.2.0",
+    "@aigrc/core": "^3.1.0",
     "mammoth": "^1.8.0",
     "pdf-parse": "^1.1.1",
     "yaml": "^2.3.4",

@@ -131,8 +131,12 @@
     "languages": [
       {
         "id": "yaml",
-        "extensions": [".aigrc.yaml"],
-        "aliases": ["AIGRC Config"]
+        "extensions": [
+          ".aigrc.yaml"
+        ],
+        "aliases": [
+          "AIGRC Config"
+        ]
       }
     ]
   },

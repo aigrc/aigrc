@@ -1,6 +1,6 @@
 {
   "name": "@aigrc/events",
-  "version": "0.1.0",
+  "version": "3.1.0",
   "description": "Governance Event Architecture for AIGRC - event types, validation, hashing, and deterministic identity",
   "license": "Apache-2.0",
   "author": "AIGRC <contact@aigrc.dev>",
@@ -44,7 +44,9 @@
       "require": "./dist/schemas/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
