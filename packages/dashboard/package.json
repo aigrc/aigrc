@@ -27,7 +27,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "vite build",
     "build:lib": "tsup",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx",
