@@ -1,6 +1,6 @@
 {
   "name": "@aigos/runtime",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "AIGOS Runtime Governance System - Identity Manager, Policy Engine, and Runtime Controls",
   "type": "module",
   "main": "./dist/index.js",

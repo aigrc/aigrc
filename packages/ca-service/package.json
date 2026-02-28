@@ -1,6 +1,6 @@
 {
   "name": "@aigrc/ca-service",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "AIGRC CGA Certificate Authority Service - Hosted CA for Certified Governed Agents",
   "license": "Apache-2.0",
   "author": "AIGRC <contact@aigrc.dev>",

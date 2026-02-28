@@ -1,6 +1,6 @@
 {
   "name": "@aigrc/event-service",
-  "version": "0.1.0",
+  "version": "3.1.0",
   "description": "AIGOS Governance Event Ingestion Service — Sync and Batch channel endpoints",
   "license": "Apache-2.0",
   "author": "AIGRC <contact@aigrc.dev>",
@@ -41,7 +41,9 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
