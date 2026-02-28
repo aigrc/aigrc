@@ -52,7 +52,7 @@
     "start": "node dist/bin/server.js",
     "typecheck": "tsc --noEmit",
     "clean": "rimraf dist",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "db:migrate": "node dist/db/migrate.js",
     "db:seed": "node dist/db/seed.js"
