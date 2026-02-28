@@ -35,6 +35,7 @@ export const AIGRCConfigSchema = z.object({
   redTeamEnabled: z.boolean().default(false),
   aigosApiUrl: z.string().optional(),
   aigosApiKey: z.string().optional(),
+  aigosOrgId: z.string().optional(),
 
   // Golden Thread - Jira Integration
   jiraApiUrl: z.string().optional(),
@@ -88,6 +89,7 @@ export function loadConfig(): AIGRCConfig {
     redTeamEnabled: process.env.AIGRC_REDTEAM_ENABLED === "true",
     aigosApiUrl: process.env.AIGOS_API_URL,
     aigosApiKey: process.env.AIGOS_API_KEY,
+    aigosOrgId: process.env.AIGOS_ORG_ID,
     // Golden Thread - Jira
     jiraApiUrl: process.env.JIRA_API_URL,
     jiraApiToken: process.env.JIRA_API_TOKEN,

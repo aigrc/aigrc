@@ -1,0 +1,81 @@
+{
+  "name": "@aigrc/ca-service",
+  "version": "1.0.0",
+  "description": "AIGRC CGA Certificate Authority Service - Hosted CA for Certified Governed Agents",
+  "license": "Apache-2.0",
+  "author": "AIGRC <contact@aigrc.dev>",
+  "homepage": "https://github.com/aigrc/aigrc#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aigrc/aigrc.git",
+    "directory": "packages/ca-service"
+  },
+  "bugs": {
+    "url": "https://github.com/aigrc/aigrc/issues"
+  },
+  "keywords": [
+    "aigrc",
+    "aigos",
+    "cga",
+    "certificate-authority",
+    "ai-governance",
+    "agent-trust",
+    "a2a",
+    "ocsp"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "aigrc-ca": "./dist/bin/server.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "start": "node dist/bin/server.js",
+    "typecheck": "tsc --noEmit",
+    "clean": "rimraf dist",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:migrate": "node dist/db/migrate.js",
+    "db:seed": "node dist/db/seed.js"
+  },
+  "dependencies": {
+    "@aigrc/core": "workspace:*",
+    "cors": "^2.8.5",
+    "express": "^5.0.1",
+    "helmet": "^7.1.0",
+    "jose": "^5.2.0",
+    "pino": "^8.17.2",
+    "pino-http": "^9.0.0",
+    "yaml": "^2.3.4",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^20.10.0",
+    "pino-pretty": "^10.3.1",
+    "rimraf": "^5.0.5",
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.2",
+    "vitest": "^1.6.0"
+  }
+}

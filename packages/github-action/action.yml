@@ -50,6 +50,20 @@ inputs:
     description: "GitHub token for creating PR comments"
     required: false
     default: ${{ github.token }}
+  push:
+    description: "Push governance events to AIGOS"
+    required: false
+    default: "false"
+  push-on:
+    description: "When to push events (pr|merge|always|never)"
+    required: false
+    default: "pr"
+  aigos-api-url:
+    description: "AIGOS API URL for event push"
+    required: false
+  aigos-org-id:
+    description: "Organization ID for AIGOS event push"
+    required: false
 
 outputs:
   detections-count:
@@ -76,6 +90,14 @@ outputs:
     description: "Whether policy check passed"
   sarif-path:
     description: "Path to generated SARIF file (if upload-sarif enabled)"
+  push-status:
+    description: "Event push status (success|skipped|failed)"
+  push-accepted:
+    description: "Number of events accepted by AIGOS"
+  push-rejected:
+    description: "Number of events rejected by AIGOS"
+  aigos-dashboard-url:
+    description: "AIGOS dashboard URL for this organization"
 
 runs:
   using: "node20"

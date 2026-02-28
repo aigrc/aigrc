@@ -7,6 +7,7 @@
 
 import { AIGRCConfig } from "../config.js";
 import { Services } from "../services/index.js";
+import { EventPushService, formatFeedbackSection } from "../services/event-push.js";
 
 // Import tool modules - Value-First tools come first
 import { valueFirstTools, executeValueFirstTools } from "./value-first/index.js";
@@ -69,43 +70,47 @@ export async function executeTool(
   name: string,
   args: Record<string, unknown>,
   services: Services,
-  config: AIGRCConfig
+  config: AIGRCConfig,
+  eventPushService?: EventPushService,
 ): Promise<ToolResult> {
   try {
     // Try Value-First tools first (primary interface)
-    const valueFirstResult = await executeValueFirstTools(name, args, services, config);
-    if (valueFirstResult) return valueFirstResult;
+    let result: ToolResult | null = null;
 
-    // Try Checkpoint tools
-    const checkpointResult = await executeCheckpointTools(name, args, services, config);
-    if (checkpointResult) return checkpointResult;
-
-    // Try Golden Thread tools
-    const goldenThreadResult = await executeGoldenThreadTools(name, args, services, config);
-    if (goldenThreadResult) return goldenThreadResult;
-
-    // Try core tools
-    const coreResult = await executeCoreTools(name, args, services, config);
-    if (coreResult) return coreResult;
-
-    // Try compliance tools
-    const complianceResult = await executeComplianceTools(name, args, services, config);
-    if (complianceResult) return complianceResult;
-
-    // Try report tools
-    const reportResult = await executeReportTools(name, args, services, config);
-    if (reportResult) return reportResult;
+    result = await executeValueFirstTools(name, args, services, config);
+    if (!result) result = await executeCheckpointTools(name, args, services, config);
+    if (!result) result = await executeGoldenThreadTools(name, args, services, config);
+    if (!result) result = await executeCoreTools(name, args, services, config);
+    if (!result) result = await executeComplianceTools(name, args, services, config);
+    if (!result) result = await executeReportTools(name, args, services, config);
 
     // Try red team tools (if enabled)
-    if (config.redTeamEnabled) {
-      const redteamResult = await executeRedteamTools(name, args, services, config);
-      if (redteamResult) return redteamResult;
+    if (!result && config.redTeamEnabled) {
+      result = await executeRedteamTools(name, args, services, config);
     }
 
-    return {
-      content: [{ type: "text", text: `Unknown tool: ${name}` }],
-      isError: true,
-    };
+    if (!result) {
+      return {
+        content: [{ type: "text", text: `Unknown tool: ${name}` }],
+        isError: true,
+      };
+    }
+
+    // AIGOS Event Push — push governance event for mapped tools (AIG-219)
+    if (eventPushService?.isEnabled() && !result.isError) {
+      try {
+        const toolResultText = result.content.map((c) => c.text).join("\n");
+        const feedback = await eventPushService.pushForTool(name, args, toolResultText);
+        if (feedback) {
+          const feedbackSection = formatFeedbackSection(feedback);
+          result.content.push({ type: "text", text: feedbackSection });
+        }
+      } catch {
+        // Non-blocking: event push failure should never break tool execution
+      }
+    }
+
+    return result;
   } catch (error) {
     return {
       content: [

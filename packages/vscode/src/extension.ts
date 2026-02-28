@@ -10,6 +10,10 @@ import { DiagnosticProvider } from "./providers/diagnostics";
 import { PolicyDiagnosticProvider } from "./providers/policyDiagnostics";
 import { PolicyCodeActionProvider } from "./providers/codeActions";
 import { CodeLensProvider } from "./providers/codeLens";
+import { StatusBarManager } from "./providers/statusBar";
+import { EventPushService } from "./services/eventPush";
+import { CardWatcher } from "./watchers/cardWatcher";
+import { pushCommand } from "./commands/push";
 
 // ─────────────────────────────────────────────────────────────────
 // EXTENSION ACTIVATION
@@ -18,6 +22,9 @@ import { CodeLensProvider } from "./providers/codeLens";
 let diagnosticProvider: DiagnosticProvider | undefined;
 let policyDiagnosticProvider: PolicyDiagnosticProvider | undefined;
 let assetTreeProvider: AssetTreeProvider | undefined;
+let eventPushService: EventPushService | undefined;
+let statusBarManager: StatusBarManager | undefined;
+let cardWatcher: CardWatcher | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
   console.log("AIGRC extension is now active");
@@ -34,6 +41,13 @@ export function activate(context: vscode.ExtensionContext) {
   });
   context.subscriptions.push(treeView);
 
+  // Initialize event push service + status bar + card watcher (AIG-217)
+  eventPushService = new EventPushService();
+  const complianceOutput = vscode.window.createOutputChannel("AIGRC Compliance");
+  statusBarManager = new StatusBarManager(eventPushService, complianceOutput);
+  cardWatcher = new CardWatcher(eventPushService);
+  context.subscriptions.push(complianceOutput, statusBarManager, cardWatcher);
+
   // Register commands
   context.subscriptions.push(
     vscode.commands.registerCommand("aigrc.scan", () => scanCommand(context, diagnosticProvider!)),
@@ -42,6 +56,8 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("aigrc.validateCard", () => validateCommand(context)),
     vscode.commands.registerCommand("aigrc.createCard", () => createCardCommand(context)),
     vscode.commands.registerCommand("aigrc.checkPolicy", () => checkPolicyCommand(context, policyDiagnosticProvider!)),
+    vscode.commands.registerCommand("aigrc.pushToAigos", () => pushCommand(context, eventPushService!)),
+    vscode.commands.registerCommand("aigrc.showComplianceOutput", () => complianceOutput.show()),
     vscode.commands.registerCommand("aigrc.showApprovedAlternatives", (violation) => {
       if (violation?.alternatives) {
         vscode.window.showQuickPick(violation.alternatives, {
@@ -119,7 +135,16 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(watcher);
 }
 
-export function deactivate() {
+export async function deactivate() {
+  if (eventPushService) {
+    await eventPushService.dispose();
+  }
+  if (statusBarManager) {
+    statusBarManager.dispose();
+  }
+  if (cardWatcher) {
+    cardWatcher.dispose();
+  }
   if (diagnosticProvider) {
     diagnosticProvider.dispose();
   }

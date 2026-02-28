@@ -1,0 +1,36 @@
+# CGA Certificate Authority Service
+# Docker Compose for local development and testing
+
+version: "3.8"
+
+services:
+  ca-service:
+    build:
+      context: ../..
+      dockerfile: packages/ca-service/Dockerfile
+    container_name: cga-ca-service
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - CA_PORT=3000
+      - CA_HOST=0.0.0.0
+      - CA_DB_PATH=/app/data/cga-ca.db
+      - CA_KEY_PASSWORD=${CA_KEY_PASSWORD:-development-only-password}
+      - CA_ISSUER_ID=${CA_ISSUER_ID:-cga.aigos.io}
+      - CA_ISSUER_NAME=${CA_ISSUER_NAME:-AIGOS CGA Certificate Authority}
+      - CA_CORS_ORIGINS=${CA_CORS_ORIGINS:-*}
+      - CA_LOG_LEVEL=${CA_LOG_LEVEL:-info}
+    volumes:
+      - ca-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  ca-data:
+    name: cga-ca-data

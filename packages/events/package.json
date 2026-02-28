@@ -1,0 +1,65 @@
+{
+  "name": "@aigrc/events",
+  "version": "0.1.0",
+  "description": "Governance Event Architecture for AIGRC - event types, validation, hashing, and deterministic identity",
+  "license": "Apache-2.0",
+  "author": "AIGRC <contact@aigrc.dev>",
+  "homepage": "https://github.com/aigrc/aigrc#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aigrc/aigrc.git",
+    "directory": "packages/events"
+  },
+  "bugs": {
+    "url": "https://github.com/aigrc/aigrc/issues"
+  },
+  "keywords": [
+    "aigrc",
+    "governance-events",
+    "event-schema",
+    "event-validation",
+    "compliance",
+    "audit-trail",
+    "golden-thread"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./schemas": {
+      "types": "./dist/schemas/index.d.ts",
+      "import": "./dist/schemas/index.mjs",
+      "require": "./dist/schemas/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest",
+    "typecheck": "tsc --noEmit",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "rimraf": "^5.0.0",
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
+  }
+}
