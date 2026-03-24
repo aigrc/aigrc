@@ -1,0 +1,66 @@
+{
+  "name": "@aigrc/github-app",
+  "version": "1.0.0",
+  "description": "PangoGuard — Layered AI governance that scales with your code",
+  "license": "Apache-2.0",
+  "author": "AIGRC <contact@aigrc.dev>",
+  "homepage": "https://github.com/aigrc/aigrc#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aigrc/aigrc.git",
+    "directory": "packages/github-app"
+  },
+  "keywords": [
+    "aigrc",
+    "pangoguard",
+    "pangolabs",
+    "github-app",
+    "ai-governance",
+    "probot",
+    "mcp",
+    "eu-ai-act",
+    "nist-ai-rmf",
+    "iso-42001"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "clean": "rimraf dist",
+    "lint": "eslint src --ext .ts"
+  },
+  "dependencies": {
+    "@aigrc/core": "workspace:*",
+    "@octokit/rest": "^20.0.0",
+    "@supabase/supabase-js": "^2.39.0",
+    "probot": "^13.0.0",
+    "simple-git": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "eslint": "^8.55.0",
+    "rimraf": "^5.0.0",
+    "tsup": "^8.0.1",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
+  }
+}
